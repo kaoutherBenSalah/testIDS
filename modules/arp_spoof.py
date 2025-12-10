@@ -1,29 +1,51 @@
 """
-ARP Spoofing module (detailed comments)
+ARP Spoofing Module - Man-in-the-Middle (MITM) Attack
 
-This file implements a simple ARP spoofing class that can poison ARP
-tables of a target and a gateway to perform a Man-in-the-Middle (MITM).
+This module implements ARP table poisoning to perform a Man-in-the-Middle attack.
+It intercepts traffic between a target machine and the gateway (router).
 
-Important safety note:
-- This code interacts with the local network and sends crafted ARP
-  packets. Use only in an authorized, isolated lab.
+HOW ARP SPOOFING WORKS:
+1. ARP (Address Resolution Protocol) maps IP addresses to MAC addresses
+2. This module sends forged ARP replies to fool the target and gateway
+3. Target receives: "Gateway IP is at MY MAC address"
+4. Gateway receives: "Target IP is at MY MAC address"
+5. Both machines now send traffic to this machine
+6. This machine can read/modify traffic before forwarding it
+
+SECURITY WARNING:
+- This code sends crafted network packets and requires administrative privileges
+- Use ONLY in authorized, isolated lab environments
+- Unauthorized access to computer networks is ILLEGAL
+- Author assumes NO liability for misuse
+
+Components:
+- ARPSpoofer class: Core attack implementation
+- Traffic sniffing: Optional PCAP file capture
+- ARP table restoration: Cleanup after attack
+
+Dependencies: Scapy, network utilities, logging
 """
 
-import sys
-import time
-import argparse
-import os
-from datetime import datetime
-from pathlib import Path
+import sys                                      # System operations
+import time                                     # Sleep for packet intervals
+import argparse                                 # Command-line argument parsing
+import os                                       # OS-level operations (privileges check)
+from datetime import datetime                   # Timestamp for PCAP files
+from pathlib import Path                        # Cross-platform path operations
 
-# Import only the necessary Scapy symbols to keep namespaces clear
+# Import Scapy packet construction and sending libraries
 from scapy.all import ARP, send, sniff, PcapWriter, ICMP, IP, TCP, UDP
 
-# Ensure the project root is available on sys.path so relative imports work
+# Add project root to path for relative imports
 sys.path.append(str(Path(__file__).parent.parent))
 
-from utils.logger import get_logger
-from utils.network_utils import get_mac, enable_ip_forwarding, disable_ip_forwarding
+# Import custom utilities
+from utils.logger import get_logger                  # Logging functionality
+from utils.network_utils import (                   # Network utilities
+    get_mac,                                        # Resolve IP -> MAC mapping
+    enable_ip_forwarding,                           # Enable packet forwarding
+    disable_ip_forwarding                           # Disable packet forwarding
+)
 
 
 class ARPSpoofer:

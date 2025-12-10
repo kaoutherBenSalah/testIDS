@@ -1,47 +1,77 @@
 """
-Network Intrusion Detection System (IDS)
-Detects ARP Spoofing and SYN Flood attacks in real-time
+Network Intrusion Detection System (IDS) Module
 
-This module monitors network traffic and identifies:
-1. ARP Spoofing: Duplicate IP addresses with different MAC addresses
-2. SYN Flood: Abnormally high rate of TCP SYN packets
+This module monitors network traffic in real-time and detects two types of attacks:
 
-Usage:
+1. ARP SPOOFING DETECTION:
+   - Monitors ARP replies (Address Resolution Protocol)
+   - Detects when MAC address changes for same IP (likely MITM attack)
+   - Uses ARP table to track IP-to-MAC mappings
+   - Alert level: HIGH
+
+2. SYN FLOOD DETECTION:
+   - Monitors TCP SYN packet rate
+   - Triggers alert when SYN rate exceeds threshold
+   - Different thresholds for sensitivity levels
+   - Alert level: CRITICAL
+
+DETECTION PRINCIPLES:
+- Passive monitoring: Watches traffic without interfering
+- Real-time analysis: Triggers alerts immediately upon detection
+- Configurable sensitivity: Low/Medium/High thresholds
+- Alert cooldown: Prevents spam by not re-alerting too frequently
+
+KEY FEATURES:
+- Multi-threaded packet sniffing via Scapy
+- Statistical rate calculations
+- Cooldown period to prevent duplicate alerts
+- Real-time statistics and monitoring
+- Comprehensive logging
+
+USAGE:
+    from modules.detector import NetworkDetector
+    
     detector = NetworkDetector(interface='eth0', sensitivity='medium')
-    detector.start_monitoring()
+    detector.start_monitoring()  # Blocks until Ctrl+C
 
 Author: Kaouther Ben Salah, Mohamed Firas Ben Hmida, Houssem Eddine Ben Chaabane
 Class: 4-ING-J-SSIR4
 """
 
-import sys
-import time
-import threading
-from datetime import datetime, timedelta
-from collections import defaultdict, deque
-from pathlib import Path
+import sys                              # System utilities
+import time                             # Time operations for rate calculation
+import threading                        # Threading (future use for background monitoring)
+from datetime import datetime, timedelta  # Timestamp and duration calculations
+from collections import defaultdict, deque  # Data structures for packet tracking
+from pathlib import Path                # Path operations
 
-# Scapy imports for packet sniffing
+# Scapy library for packet sniffing and parsing
 from scapy.all import sniff, ARP, TCP, IP
 
-# Add project root to path
+# Add project root to path for relative imports
 sys.path.append(str(Path(__file__).parent.parent))
 
+# Import custom logging utility
 from utils.logger import get_logger
 
 
 class NetworkDetector:
     """
-    Intrusion Detection System for monitoring network attacks
+    Network Intrusion Detection System
     
-    This class provides real-time detection of:
-    - ARP Spoofing (MAC address changes for same IP)
-    - SYN Flood attacks (high rate of SYN packets)
+    Monitors network traffic and detects attacks in real-time:
+    - ARP Spoofing: Detects MAC address changes for same IP
+    - SYN Flooding: Detects abnormally high TCP SYN packet rates
     
     Attributes:
-        interface (str): Network interface to monitor (e.g., 'eth0', 'ens33')
+        interface (str): Network interface to monitor (None = all interfaces)
         sensitivity (str): Detection sensitivity ('low', 'medium', 'high')
-        logger: Logger instance for alerts and events
+        arp_table (dict): Stores known IP -> MAC mappings
+        syn_packets (dict): Stores recent SYN packet timestamps per IP
+        thresholds (dict): Detection thresholds based on sensitivity
+        is_monitoring (bool): Current monitoring state
+        packet_count (int): Total packets processed
+        alert_count (int): Total alerts generated
     """
     
     def __init__(self, interface=None, sensitivity='medium'):
@@ -49,37 +79,42 @@ class NetworkDetector:
         Initialize the Network Detector
         
         Args:
-            interface (str): Network interface to sniff on. If None, uses default.
-            sensitivity (str): Detection sensitivity level:
+            interface (str): Network interface to sniff on (None = default)
+            sensitivity (str): Detection sensitivity:
                 - 'low': Higher thresholds, fewer false positives
-                - 'medium': Balanced detection
-                - 'high': Lower thresholds, catches more but may have false positives
+                - 'medium': Balanced (recommended)
+                - 'high': Lower thresholds, more sensitive
         """
-        self.interface = interface
-        self.sensitivity = sensitivity
-        self.logger = get_logger("IDS-Detector")
+        # Store configuration
+        self.interface = interface           # Network interface to monitor
+        self.sensitivity = sensitivity       # Sensitivity level
+        self.logger = get_logger("IDS-Detector")  # Logger instance
         
-        # ARP Spoofing Detection
-        # Stores: {IP_address: MAC_address}
+        # ============ ARP SPOOFING DETECTION STATE ============
+        # Maps IP addresses to their known MAC addresses
+        # Format: {ip_address: mac_address}
         self.arp_table = {}
         
-        # SYN Flood Detection
-        # Stores timestamps of SYN packets for rate calculation
-        self.syn_packets = defaultdict(deque)  # {destination_IP: deque of timestamps}
+        # ============ SYN FLOOD DETECTION STATE ============
+        # Stores recent SYN packet timestamps for rate calculation
+        # Format: {destination_ip: deque([timestamp1, timestamp2, ...])}
+        self.syn_packets = defaultdict(deque)
         
-        # Detection thresholds based on sensitivity
+        # Set detection thresholds based on selected sensitivity
         self.thresholds = self._set_thresholds(sensitivity)
         
-        # Monitoring state
-        self.is_monitoring = False
-        self.packet_count = 0
-        self.alert_count = 0
-        self.start_time = None
+        # ============ MONITORING STATE VARIABLES ============
+        self.is_monitoring = False          # Current monitoring state
+        self.packet_count = 0               # Counter for processed packets
+        self.alert_count = 0                # Counter for generated alerts
+        self.start_time = None              # Monitoring start timestamp
         
-        # Alert cooldown to prevent spam (seconds)
-        self.alert_cooldown = {}  # {alert_type: last_alert_time}
-        self.cooldown_period = 10  # Don't re-alert same issue within 10 seconds
+        # ============ ALERT COOLDOWN (PREVENT SPAM) ============
+        # Stores: {alert_key: timestamp_of_last_alert}
+        self.alert_cooldown = {}
+        self.cooldown_period = 10           # Don't re-alert for 10 seconds
         
+        # Log initialization
         self.logger.info(f"🔍 IDS Detector initialized")
         self.logger.info(f"   Interface: {interface or 'default'}")
         self.logger.info(f"   Sensitivity: {sensitivity}")
@@ -89,16 +124,24 @@ class NetworkDetector:
         """
         Set detection thresholds based on sensitivity level
         
+        Different sensitivity levels have different thresholds:
+        - LOW: More conservative, fewer false positives
+        - MEDIUM: Balanced approach (recommended)
+        - HIGH: Very sensitive, may have more false positives
+        
         Args:
             sensitivity (str): 'low', 'medium', or 'high'
         
         Returns:
-            dict: Threshold values for different attack types
+            dict: Threshold configuration for selected sensitivity
         """
+        # Define thresholds for each sensitivity level
         thresholds = {
             'low': {
-                'syn_rate': 200,      # SYN packets per second to trigger alert
-                'syn_window': 5,      # Time window (seconds) for rate calculation
+                # SYN packets per second to trigger alert
+                'syn_rate': 200,
+                # Time window (seconds) for SYN rate calculation
+                'syn_window': 5,
             },
             'medium': {
                 'syn_rate': 100,
@@ -110,6 +153,7 @@ class NetworkDetector:
             }
         }
         
+        # Return thresholds for selected level, default to 'medium'
         return thresholds.get(sensitivity, thresholds['medium'])
     
     def start_monitoring(self):
