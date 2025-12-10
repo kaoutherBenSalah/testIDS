@@ -1,55 +1,72 @@
 """
-MINIMIZED Cybersecurity Platform - Attacker Interface Views
+Cybersecurity Platform - Attacker Interface Views
 
-This module provides the API endpoints for the attacker interface.
-It handles ARP Spoofing and SYN Flooding attack controls.
-
-Endpoints:
-- Attacker Interface Page View
-- ARP Spoofing Attack Control (Start/Stop)
-- SYN Flooding Attack Control (Start/Stop)
-- Attack Statistics Monitoring
-- Network Information Retrieval
+Complete attacker-side views with:
+- Network Scanner
+- ARP Spoofing
+- SYN Flooding
+- Traffic Sniffer
+- Real-time Statistics
 """
 
 import json
 import sys
 import os
+import uuid
+import threading
 from pathlib import Path
-from django.shortcuts import render
-from django.http import JsonResponse
+from datetime import datetime
+from django.shortcuts import render, redirect
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-import threading
 
-# Add project root to Python path for module imports
+# Add project root to Python path
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from modules.arp_spoof import ARPSpoofer
 from modules.syn_flood import SYNFlooder
+from modules.network_scanner import NetworkScanner
+from modules.traffic_sniffer import TrafficSniffer
 from utils.network_utils import get_local_ip, get_gateway_ip
+from .models import AttackLog, User, UserRole
 
-# Global storage for running attacks
-# Maps attack IDs to attack objects and metadata
-active_attacks = {}
+# Global storage for running attacks and scanners
+active_attacks = {}  # {attack_id: {'object': attack_obj, 'type': 'arp'|'syn', 'data': {...}}}
+active_scanners = {}  # {scan_id: {'object': scanner_obj, 'data': {...}}}
+active_sniffers = {}  # {sniffer_id: {'object': sniffer_obj, 'data': {...}}}
 
 
-def attacker_view(request):
+def check_attacker_role(user):
+    """Check if user has attacker permissions"""
+    return user.is_authenticated and user.is_attacker()
+
+
+@login_required(login_url='login')
+def attacker_dashboard(request):
     """
-    Render the main attacker interface page.
+    Main attacker interface dashboard
     
-    This view displays the ARP Spoofing and SYN Flooding attack panels,
-    allowing users to configure and launch network attacks.
-    
-    Args:
-        request: Django HTTP request object
-    
-    Returns:
-        Rendered attacker.html template
+    Shows network info, active machines, and attack controls
     """
-    return render(request, 'attacker.html')
+    if not check_attacker_role(request.user):
+        return redirect('login')
+    
+    local_ip = get_local_ip()
+    gateway_ip = get_gateway_ip()
+    
+    context = {
+        'local_ip': local_ip,
+        'gateway_ip': gateway_ip,
+        'active_attacks': len(active_attacks),
+        'active_scans': len(active_scanners),
+    }
+    
+    return render(request, 'attacker.html', context)
 
 
 # ============================================================================
@@ -361,4 +378,268 @@ def get_attack_stats(request):
     
     except Exception as e:
         return Response({'error': str(e)}, status=500)
+
+
+# ============================================================================
+# NETWORK SCANNER API ENDPOINTS
+# ============================================================================
+
+@require_http_methods(["POST"])
+@login_required
+@csrf_exempt
+def start_network_scan(request):
+    """
+    START NETWORK SCAN ENDPOINT
+    
+    Scans a network range for active hosts and open ports
+    
+    Required Parameters:
+        - network_range (str): Network range in CIDR (e.g., '192.168.1.0/24')
+    
+    Optional Parameters:
+        - full_scan (bool): Include port scanning (slower, default: False)
+    
+    Returns:
+        - Success: {
+            'status': 'scanning',
+            'scan_id': str,
+            'message': str
+          }
+    """
+    try:
+        if not check_attacker_role(request.user):
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+        
+        # Parse JSON or form data
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+        
+        network_range = data.get('network_range')
+        full_scan = data.get('full_scan', False)
+        
+        if not network_range:
+            return JsonResponse({'error': 'Missing network_range parameter'}, status=400)
+        
+        # Create scanner
+        scanner = NetworkScanner()
+        
+        # Start scan in background thread
+        scan_id = f"scan_{str(uuid.uuid4())[:8]}"
+        
+        if full_scan:
+            scan_thread = threading.Thread(
+                target=scanner.identify_active_machines,
+                args=(network_range,),
+                daemon=True
+            )
+        else:
+            scan_thread = threading.Thread(
+                target=scanner.scan_subnet,
+                args=(network_range,),
+                daemon=True
+            )
+        
+        scan_thread.start()
+        
+        # Store scanner reference
+        active_scanners[scan_id] = {
+            'scanner': scanner,
+            'network_range': network_range,
+            'thread': scan_thread,
+            'start_time': datetime.now()
+        }
+        
+        return JsonResponse({
+            'status': 'scanning',
+            'scan_id': scan_id,
+            'message': f'Scanning network {network_range}...'
+        })
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(["GET"])
+@login_required
+def get_scan_results(request, scan_id):
+    """
+    GET NETWORK SCAN RESULTS
+    
+    Retrieves results from a completed or in-progress network scan
+    
+    Parameters:
+        - scan_id (str): The scan identifier
+    
+    Returns:
+        - Success: {
+            'status': 'completed' or 'scanning',
+            'hosts': [...],
+            'count': int
+          }
+    """
+    try:
+        if scan_id not in active_scanners:
+            return JsonResponse({'error': 'Scan not found'}, status=404)
+        
+        scan_data = active_scanners[scan_id]
+        scanner = scan_data['scanner']
+        
+        # Convert hosts to JSON-serializable format
+        hosts = [host.to_dict() for host in scanner.discovered_hosts]
+        
+        is_complete = not scan_data['thread'].is_alive()
+        
+        return JsonResponse({
+            'status': 'completed' if is_complete else 'scanning',
+            'hosts': hosts,
+            'count': len(hosts)
+        })
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ============================================================================
+# TRAFFIC SNIFFER API ENDPOINTS
+# ============================================================================
+
+@require_http_methods(["POST"])
+@login_required
+@csrf_exempt
+def start_traffic_sniff(request):
+    """
+    START TRAFFIC SNIFFER ENDPOINT
+    
+    Starts capturing network traffic with optional filtering
+    
+    Optional Parameters:
+        - filter (str): BPF filter (e.g., 'tcp port 80')
+        - count (int): Max packets to capture
+    
+    Returns:
+        - Success: {'status': 'sniffing', 'sniffer_id': str}
+    """
+    try:
+        if not check_attacker_role(request.user):
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+        
+        # Parse request data
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+        
+        filter_str = data.get('filter', None)
+        count = int(data.get('count', 0))
+        
+        # Create sniffer
+        sniffer = TrafficSniffer()
+        sniffer_id = f"sniff_{str(uuid.uuid4())[:8]}"
+        
+        # Start sniffing
+        sniffer.start_sniffing(filter_str=filter_str, count=count)
+        
+        # Store sniffer reference
+        active_sniffers[sniffer_id] = {
+            'sniffer': sniffer,
+            'filter': filter_str,
+            'start_time': datetime.now()
+        }
+        
+        return JsonResponse({
+            'status': 'sniffing',
+            'sniffer_id': sniffer_id,
+            'message': f'Capturing traffic{" (filter: " + filter_str + ")" if filter_str else ""}...'
+        })
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(["GET"])
+@login_required
+def get_sniffed_packets(request, sniffer_id):
+    """
+    GET CAPTURED PACKETS
+    
+    Returns packets captured by a traffic sniffer
+    
+    Parameters:
+        - sniffer_id (str): The sniffer identifier
+    
+    Returns:
+        - Success: {
+            'status': 'sniffing' or 'stopped',
+            'packets': [...],
+            'count': int,
+            'stats': {...}
+          }
+    """
+    try:
+        if sniffer_id not in active_sniffers:
+            return JsonResponse({'error': 'Sniffer not found'}, status=404)
+        
+        sniff_data = active_sniffers[sniffer_id]
+        sniffer = sniff_data['sniffer']
+        
+        packets = sniffer.intercept_traffic()
+        stats = sniffer.get_statistics()
+        
+        return JsonResponse({
+            'status': 'sniffing' if sniffer.is_sniffing else 'stopped',
+            'packets': packets[-50:],  # Return last 50 packets (for performance)
+            'count': len(packets),
+            'stats': stats
+        })
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(["POST"])
+@login_required
+@csrf_exempt
+def stop_traffic_sniff(request):
+    """Stop traffic sniffer"""
+    try:
+        sniffer_id = request.data.get('sniffer_id') if request.content_type == 'application/json' else request.POST.get('sniffer_id')
+        
+        if sniffer_id not in active_sniffers:
+            return JsonResponse({'error': 'Sniffer not found'}, status=404)
+        
+        sniffer_data = active_sniffers[sniffer_id]
+        sniffer = sniffer_data['sniffer']
+        sniffer.stop_sniffing()
+        
+        return JsonResponse({'status': 'stopped', 'message': 'Traffic sniffer stopped'})
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ============================================================================
+# SYSTEM INFO ENDPOINTS
+# ============================================================================
+
+@api_view(['GET'])
+@login_required
+def get_network_info(request):
+    """Get local network information"""
+    try:
+        if not check_attacker_role(request.user):
+            return Response({'error': 'Permission denied'}, status=403)
+        
+        return Response({
+            'local_ip': get_local_ip(),
+            'gateway_ip': get_gateway_ip(),
+            'active_attacks': len(active_attacks),
+            'active_scans': len(active_scanners),
+            'active_sniffers': len(active_sniffers)
+        })
+    
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
 

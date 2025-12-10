@@ -1,275 +1,466 @@
 {% extends 'base.html' %}
 
-{% block title %}Attacker Interface - CyberSec Platform{% endblock %}
+{% block title %}⚔️ Attacker Interface - IDS Platform{% endblock %}
 
 {% block content %}
-<div class="attacker-interface">
-    <h2>⚔️ Attacker Interface</h2>
-    <p class="warning">⚠️ Use only in authorized testing environments</p>
-
-    <div class="attack-panels">
-        <!-- ARP Spoofing Panel -->
-        <div class="attack-panel">
-            <h3>🎭 ARP Spoofing</h3>
-            <p>Man-in-the-Middle attack via ARP table poisoning</p>
-            
-            <div class="form-group">
-                <label>Target IP:</label>
-                <input type="text" id="arp-target-ip" placeholder="192.168.1.20">
-            </div>
-            
-            <div class="form-group">
-                <label>Gateway IP:</label>
-                <input type="text" id="arp-gateway-ip" placeholder="192.168.1.1">
-            </div>
-            
-            <div class="form-group">
-                <label>Interface (optional):</label>
-                <input type="text" id="arp-interface" placeholder="eth0">
-            </div>
-            
-            <div class="form-group">
-                <label for="arp-interval">Interval (seconds):</label>
-                <input type="number" id="arp-interval" title="Time between ARP packets" value="2" min="1">
-            </div>
-            
-            <div class="button-group">
-                <button onclick="startARPAttack()" class="btn btn-danger" id="arp-start-btn">Start ARP Attack</button>
-                <button onclick="stopARPAttack()" class="btn btn-secondary" id="arp-stop-btn" disabled>Stop Attack</button>
-            </div>
-            
-            <div id="arp-status" class="status-box"></div>
-        </div>
-
-        <!-- SYN Flooding Panel -->
-        <div class="attack-panel">
-            <h3>💥 SYN Flooding</h3>
-            <p>Denial of Service attack via TCP SYN packets</p>
-            
-            <div class="form-group">
-                <label>Target IP:</label>
-                <input type="text" id="syn-target-ip" placeholder="192.168.1.20">
-            </div>
-            
-            <div class="form-group">
-                <label for="syn-target-port">Target Port:</label>
-                <input type="number" id="syn-target-port" title="TCP port to attack" value="80" min="1" max="65535">
-            </div>
-            
-            <div class="form-group">
-                <label for="syn-threads">Number of Threads:</label>
-                <input type="number" id="syn-threads" title="Concurrent attack threads" value="10" min="1" max="50">
-            </div>
-            
-            <div class="form-group">
-                <label>Duration (seconds, optional):</label>
-                <input type="number" id="syn-duration" placeholder="Leave empty for infinite">
-            </div>
-            
-            <div class="button-group">
-                <button onclick="startSYNAttack()" class="btn btn-danger" id="syn-start-btn">Start SYN Flood</button>
-                <button onclick="stopSYNAttack()" class="btn btn-secondary" id="syn-stop-btn" disabled>Stop Attack</button>
-            </div>
-            
-            <div id="syn-status" class="status-box"></div>
+<div class="attacker-container">
+    <div class="attacker-header">
+        <h1>⚔️ Attacker Interface</h1>
+        <p class="subtitle">Network Attack Simulation System</p>
+        <div class="user-info">
+            <span>👤 {{ user.username }} ({{ user.get_role_display }})</span>
+            <a href="{% url 'logout' %}" class="btn btn-sm btn-secondary">Logout</a>
         </div>
     </div>
-
-    <!-- Attack Statistics -->
-    <div class="stats-panel">
-        <h3>📊 Active Attacks Statistics</h3>
-        <div id="attack-stats" class="stats-display">
-            <p>No active attacks</p>
+    
+    <div class="warning-banner">
+        ⚠️ <strong>AUTHORIZED USE ONLY</strong> - For authorized testing in isolated environments only
+    </div>
+    
+    <!-- TAB NAVIGATION -->
+    <div class="tab-navigation">
+        <button class="tab-btn active" onclick="switchTab('attacks', this)">🎯 Attacks</button>
+        <button class="tab-btn" onclick="switchTab('scanner', this)">🔍 Scanner</button>
+        <button class="tab-btn" onclick="switchTab('sniffer', this)">📦 Sniffer</button>
+        <button class="tab-btn" onclick="switchTab('info', this)">ℹ️ Info</button>
+    </div>
+    
+    <!-- TAB 1: ACTIVE ATTACKS -->
+    <div id="attacks-tab" class="tab-content active">
+        <div class="section-grid">
+            <div class="attack-card">
+                <div class="card-header">
+                    <h2>🎭 ARP Spoofing</h2>
+                    <p class="description">Man-in-the-Middle Attack</p>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Victim IP:</label>
+                        <input type="text" id="arp-victim-ip" class="form-control" placeholder="192.168.189.20">
+                    </div>
+                    <div class="form-group">
+                        <label>Gateway IP:</label>
+                        <input type="text" id="arp-gw-ip" class="form-control" placeholder="192.168.189.2">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Interface:</label>
+                            <input type="text" id="arp-iface" class="form-control" placeholder="auto">
+                        </div>
+                        <div class="form-group">
+                            <label>Interval (sec):</label>
+                            <input type="number" id="arp-int-val" class="form-control" value="2" min="1" placeholder="Seconds" title="Seconds between ARP packets">
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button onclick="startARPAttack()" class="btn btn-danger" id="arp-btn-start">Start</button>
+                        <button onclick="stopARPAttack()" class="btn btn-warning" id="arp-btn-stop" disabled>Stop</button>
+                    </div>
+                    <div id="arp-status-box" class="status-box"></div>
+                </div>
+            </div>
+            
+            <div class="attack-card">
+                <div class="card-header">
+                    <h2>💥 SYN Flooding</h2>
+                    <p class="description">Denial of Service Attack</p>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Target IP:</label>
+                        <input type="text" id="syn-target-ip" class="form-control" placeholder="192.168.189.20">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Port:</label>
+                            <input type="number" id="syn-port-val" class="form-control" value="80" min="1" max="65535" placeholder="Port" title="Target port">
+                        </div>
+                        <div class="form-group">
+                            <label>Threads:</label>
+                            <input type="number" id="syn-threads-val" class="form-control" value="10" min="1" max="50" placeholder="Threads" title="Number of threads">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Duration (sec):</label>
+                        <input type="number" id="syn-duration-val" class="form-control" placeholder="0=infinite">
+                    </div>
+                    <div class="button-group">
+                        <button onclick="startSYNAttack()" class="btn btn-danger" id="syn-btn-start">Start</button>
+                        <button onclick="stopSYNAttack()" class="btn btn-warning" id="syn-btn-stop" disabled>Stop</button>
+                    </div>
+                    <div id="syn-status-box" class="status-box"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats-panel">
+            <h3>📊 Attack Statistics</h3>
+            <div id="attack-stats-div" class="stats-display">
+                <div class="loading">Waiting for attacks...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- TAB 2: SCANNER -->
+    <div id="scanner-tab" class="tab-content">
+        <div class="scanner-panel">
+            <h2>🔍 Network Scanner</h2>
+            <div class="scanner-controls">
+                <div class="form-group">
+                    <label>Network Range:</label>
+                    <input type="text" id="network-range-val" class="form-control" placeholder="192.168.189.0/24">
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" id="full-scan-check"> Full Scan (slower)</label>
+                </div>
+                <div class="button-group">
+                    <button onclick="startNetworkScan()" class="btn btn-primary" id="scan-btn-start">Start</button>
+                    <button onclick="stopNetworkScan()" class="btn btn-secondary" id="scan-btn-stop" disabled>Stop</button>
+                </div>
+            </div>
+            <div id="scan-status-box" class="status-box"></div>
+            <div class="scan-results-panel">
+                <h3>Discovered Hosts</h3>
+                <div id="scan-results-div" class="loading">Awaiting scan...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- TAB 3: SNIFFER -->
+    <div id="sniffer-tab" class="tab-content">
+        <div class="sniffer-panel">
+            <h2>📦 Traffic Sniffer</h2>
+            <div class="sniffer-controls">
+                <div class="form-group">
+                    <label>BPF Filter:</label>
+                    <input type="text" id="sniffer-filter-val" class="form-control" placeholder="tcp port 80">
+                </div>
+                <div class="button-group">
+                    <button onclick="startTrafficSniff()" class="btn btn-primary" id="sniff-btn-start">Start</button>
+                    <button onclick="stopTrafficSniff()" class="btn btn-secondary" id="sniff-btn-stop" disabled>Stop</button>
+                </div>
+            </div>
+            <div class="packet-display">
+                <div id="packet-list-div" class="loading">Awaiting packets...</div>
+            </div>
+            <div class="sniffer-stats-panel">
+                <h4>Statistics</h4>
+                <div id="packet-stats-div"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- TAB 4: INFO -->
+    <div id="info-tab" class="tab-content">
+        <div class="info-panel">
+            <h2>ℹ️ System Information</h2>
+            <div class="info-cards">
+                <div class="info-card">
+                    <h3>Network</h3>
+                    <p><strong>Local IP:</strong> <span id="info-local-ip-val">{{ local_ip }}</span></p>
+                    <p><strong>Gateway:</strong> <span id="info-gateway-ip-val">{{ gateway_ip }}</span></p>
+                    <p><strong>Attacks:</strong> <span id="info-attacks-val">0</span></p>
+                </div>
+                <div class="info-card">
+                    <h3>User</h3>
+                    <p><strong>Username:</strong> {{ user.username }}</p>
+                    <p><strong>Role:</strong> {{ user.get_role_display }}</p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<style>
+.attacker-container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.attacker-header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #d32f2f; padding-bottom: 20px; }
+.attacker-header h1 { margin: 0; font-size: 36px; color: #d32f2f; }
+.subtitle { color: #666; margin: 10px 0 20px 0; }
+.user-info { float: right; font-size: 14px; }
+.warning-banner { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px; }
+.tab-navigation { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab-btn { padding: 10px 20px; border: 2px solid #ddd; background: white; cursor: pointer; border-radius: 4px; font-weight: 500; transition: all 0.3s; }
+.tab-btn:hover { border-color: #d32f2f; color: #d32f2f; }
+.tab-btn.active { background: #d32f2f; color: white; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.section-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px; margin-bottom: 30px; }
+.attack-card, .scanner-panel, .sniffer-panel, .info-panel { background: white; border: 2px solid #e0e0e0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; }
+.card-header { background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%); color: white; padding: 20px; }
+.card-header h2 { margin: 0 0 8px 0; font-size: 22px; }
+.description { margin: 0; opacity: 0.9; font-size: 14px; }
+.card-body, .scanner-panel, .sniffer-panel, .info-panel { padding: 20px; }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 8px; font-weight: 500; }
+.form-control { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+.form-control:focus { outline: none; border-color: #d32f2f; box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.button-group { display: flex; gap: 10px; margin-top: 20px; }
+.btn { padding: 10px 20px; border: none; border-radius: 4px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+.btn-danger { background: #d32f2f; color: white; }
+.btn-danger:hover:not(:disabled) { background: #b71c1c; }
+.btn-warning { background: #f57c00; color: white; }
+.btn-warning:hover:not(:disabled) { background: #e65100; }
+.btn-primary { background: #1976d2; color: white; }
+.btn-primary:hover:not(:disabled) { background: #1565c0; }
+.btn-secondary { background: #757575; color: white; }
+.btn-secondary:hover:not(:disabled) { background: #616161; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.status-box { margin-top: 20px; padding: 15px; border-radius: 4px; border-left: 4px solid #ddd; display: none; }
+.status-box.show { display: block; }
+.status-box.success { color: #2e7d32; border-left-color: #4caf50; background: #f1f8f6; }
+.status-box.error { color: #c62828; border-left-color: #f44336; background: #fdeaea; }
+.status-box.info { color: #0277bd; border-left-color: #03a9f4; background: #f0f8ff; }
+.stats-panel { background: white; border: 2px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-top: 20px; }
+.stats-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.stats-table th { background: #f5f5f5; padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #ddd; }
+.stats-table td { padding: 12px; border-bottom: 1px solid #eee; }
+.scanner-controls, .sniffer-controls { background: #f5f5f5; padding: 20px; border-radius: 4px; margin-bottom: 20px; }
+.packet-display { background: #1e1e1e; border-radius: 4px; padding: 15px; margin-top: 20px; font-family: 'Courier New', monospace; max-height: 400px; overflow-y: auto; color: #00ff00; font-size: 12px; }
+.packet-item { padding: 5px 0; border-bottom: 1px solid #333; }
+.loading { text-align: center; padding: 30px; color: #999; }
+.info-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+.info-card { background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 20px; }
+.info-card h3 { margin-top: 0; color: #333; border-bottom: 2px solid #1976d2; padding-bottom: 10px; }
+.info-card p { margin: 10px 0; font-size: 14px; }
+.scan-results-panel { margin-top: 30px; }
+</style>
+
 <script>
 let currentARPAttackId = null;
 let currentSYNAttackId = null;
+let currentScanId = null;
+let currentSnifferId = null;
 let statsInterval = null;
+let scanInterval = null;
+let sniffInterval = null;
+
+function switchTab(tabName, btn) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabName + '-tab').classList.add('active');
+    if (btn) btn.classList.add('active');
+    if (tabName === 'info') refreshSystemInfo();
+}
 
 async function startARPAttack() {
-    const targetIp = document.getElementById('arp-target-ip').value;
-    const gatewayIp = document.getElementById('arp-gateway-ip').value;
-    const interface = document.getElementById('arp-interface').value;
-    const interval = document.getElementById('arp-interval').value;
+    const targetIp = document.getElementById('arp-victim-ip').value;
+    const gatewayIp = document.getElementById('arp-gw-ip').value;
     
-    if (!targetIp || !gatewayIp) {
-        showNotification('Please fill in required fields', 'error');
-        return;
-    }
+    if (!targetIp || !gatewayIp) { alert('Fill in IPs'); return; }
     
-    try {
-        const response = await fetch('/api/attack/arp/start/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                target_ip: targetIp,
-                gateway_ip: gatewayIp,
-                interface: interface || null,
-                interval: interval
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            currentARPAttackId = data.attack_id;
-            document.getElementById('arp-start-btn').disabled = true;
-            document.getElementById('arp-stop-btn').disabled = false;
-            document.getElementById('arp-status').innerHTML = 
-                `<p class="success">✅ ${data.message}</p>`;
-            showNotification('ARP attack started', 'success');
-            startStatsRefresh();
-        } else {
-            showNotification(data.error, 'error');
-        }
-    } catch (error) {
-        showNotification('Failed to start ARP attack', 'error');
-    }
+    const response = await fetch('/api/attack/arp/start/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ target_ip: targetIp, gateway_ip: gatewayIp, interface: null, interval: 2 })
+    });
+    const data = await response.json();
+    if (response.ok) {
+        currentARPAttackId = data.attack_id;
+        document.getElementById('arp-btn-start').disabled = true;
+        document.getElementById('arp-btn-stop').disabled = false;
+        showStatus('arp-status-box', '✅ ' + data.message, 'success');
+        startStatsRefresh();
+    } else showStatus('arp-status-box', '❌ ' + data.error, 'error');
 }
 
 async function stopARPAttack() {
     if (!currentARPAttackId) return;
-    
-    try {
-        const response = await fetch('/api/attack/arp/stop/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ attack_id: currentARPAttackId })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            document.getElementById('arp-start-btn').disabled = false;
-            document.getElementById('arp-stop-btn').disabled = true;
-            document.getElementById('arp-status').innerHTML = 
-                `<p class="info">⏹️ ${data.message}</p>`;
-            showNotification('ARP attack stopped', 'info');
-            currentARPAttackId = null;
-            refreshStats();
-        } else {
-            showNotification(data.error, 'error');
-        }
-    } catch (error) {
-        showNotification('Failed to stop ARP attack', 'error');
+    const response = await fetch('/api/attack/arp/stop/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ attack_id: currentARPAttackId })
+    });
+    const data = await response.json();
+    if (response.ok) {
+        document.getElementById('arp-btn-start').disabled = false;
+        document.getElementById('arp-btn-stop').disabled = true;
+        showStatus('arp-status-box', '⏹️ ' + data.message, 'info');
+        currentARPAttackId = null;
+        refreshStats();
     }
 }
 
 async function startSYNAttack() {
     const targetIp = document.getElementById('syn-target-ip').value;
-    const targetPort = document.getElementById('syn-target-port').value;
-    const numThreads = document.getElementById('syn-threads').value;
-    const duration = document.getElementById('syn-duration').value;
+    const port = document.getElementById('syn-port-val').value;
+    const threads = document.getElementById('syn-threads-val').value;
     
-    if (!targetIp) {
-        showNotification('Please enter target IP', 'error');
-        return;
-    }
+    if (!targetIp) { alert('Enter target IP'); return; }
     
-    try {
-        const response = await fetch('/api/attack/syn/start/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                target_ip: targetIp,
-                target_port: targetPort,
-                num_threads: numThreads,
-                duration: duration || null
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            currentSYNAttackId = data.attack_id;
-            document.getElementById('syn-start-btn').disabled = true;
-            document.getElementById('syn-stop-btn').disabled = false;
-            document.getElementById('syn-status').innerHTML = 
-                `<p class="success">✅ ${data.message}</p>`;
-            showNotification('SYN Flood started', 'success');
-            startStatsRefresh();
-        } else {
-            showNotification(data.error, 'error');
-        }
-    } catch (error) {
-        showNotification('Failed to start SYN Flood', 'error');
-    }
+    const response = await fetch('/api/attack/syn/start/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ target_ip: targetIp, target_port: parseInt(port), num_threads: parseInt(threads), duration: null })
+    });
+    const data = await response.json();
+    if (response.ok) {
+        currentSYNAttackId = data.attack_id;
+        document.getElementById('syn-btn-start').disabled = true;
+        document.getElementById('syn-btn-stop').disabled = false;
+        showStatus('syn-status-box', '✅ ' + data.message, 'success');
+        startStatsRefresh();
+    } else showStatus('syn-status-box', '❌ ' + data.error, 'error');
 }
 
 async function stopSYNAttack() {
     if (!currentSYNAttackId) return;
-    
-    try {
-        const response = await fetch('/api/attack/syn/stop/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ attack_id: currentSYNAttackId })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            document.getElementById('syn-start-btn').disabled = false;
-            document.getElementById('syn-stop-btn').disabled = true;
-            document.getElementById('syn-status').innerHTML = 
-                `<p class="info">⏹️ ${data.message}</p>`;
-            showNotification('SYN Flood stopped', 'info');
-            currentSYNAttackId = null;
-            refreshStats();
-        } else {
-            showNotification(data.error, 'error');
-        }
-    } catch (error) {
-        showNotification('Failed to stop SYN Flood', 'error');
+    const response = await fetch('/api/attack/syn/stop/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ attack_id: currentSYNAttackId })
+    });
+    const data = await response.json();
+    if (response.ok) {
+        document.getElementById('syn-btn-start').disabled = false;
+        document.getElementById('syn-btn-stop').disabled = true;
+        showStatus('syn-status-box', '⏹️ ' + data.message, 'info');
+        currentSYNAttackId = null;
+        refreshStats();
     }
 }
 
 async function refreshStats() {
-    try {
-        const response = await fetch('/api/attack/stats/');
-        const data = await response.json();
-        
-        const statsDiv = document.getElementById('attack-stats');
-        
-        if (Object.keys(data.attacks).length === 0) {
-            statsDiv.innerHTML = '<p>No active attacks</p>';
-            if (statsInterval) {
-                clearInterval(statsInterval);
-                statsInterval = null;
-            }
-        } else {
-            let html = '<table class="stats-table"><tr><th>Attack ID</th><th>Type</th><th>Packets Sent</th><th>Status</th></tr>';
-            
-            for (const [id, stats] of Object.entries(data.attacks)) {
-                const status = stats.is_running ? '🟢 Running' : '🔴 Stopped';
-                html += `<tr>
-                    <td>${id}</td>
-                    <td>${stats.type}</td>
-                    <td>${stats.packets_sent}</td>
-                    <td>${status}</td>
-                </tr>`;
-            }
-            
-            html += '</table>';
-            statsDiv.innerHTML = html;
+    const response = await fetch('/api/attack/stats/');
+    const data = await response.json();
+    const statsDiv = document.getElementById('attack-stats-div');
+    if (Object.keys(data.attacks).length === 0) {
+        statsDiv.innerHTML = '<div class="loading">No active attacks</div>';
+    } else {
+        let html = '<table class="stats-table"><tr><th>Type</th><th>Target</th><th>Packets</th><th>Status</th></tr>';
+        for (const [id, stats] of Object.entries(data.attacks)) {
+            html += `<tr><td>${stats.type}</td><td>${id}</td><td>${stats.packets_sent}</td><td>${stats.is_running ? '🟢 Running' : '🔴 Stopped'}</td></tr>`;
         }
-    } catch (error) {
-        console.error('Failed to refresh stats:', error);
+        statsDiv.innerHTML = html + '</table>';
     }
 }
 
-function startStatsRefresh() {
-    if (!statsInterval) {
-        statsInterval = setInterval(refreshStats, 2000);
-    }
+function startStatsRefresh() { if (!statsInterval) statsInterval = setInterval(refreshStats, 2000); }
+
+async function startNetworkScan() {
+    const range = document.getElementById('network-range-val').value;
+    if (!range) { alert('Enter network range'); return; }
+    
+    const fullScan = document.getElementById('full-scan-check').checked;
+    const response = await fetch('/api/scan/start/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ network_range: range, full_scan: fullScan })
+    });
+    const data = await response.json();
+    if (response.ok) {
+        currentScanId = data.scan_id;
+        document.getElementById('scan-btn-start').disabled = true;
+        document.getElementById('scan-btn-stop').disabled = false;
+        startScanRefresh();
+    } else alert('Error: ' + data.error);
 }
 
-// Initial stats load
+function stopNetworkScan() {
+    if (scanInterval) clearInterval(scanInterval);
+    currentScanId = null;
+    document.getElementById('scan-btn-start').disabled = false;
+    document.getElementById('scan-btn-stop').disabled = true;
+}
+
+async function startScanRefresh() {
+    if (scanInterval) clearInterval(scanInterval);
+    scanInterval = setInterval(async () => {
+        if (!currentScanId) return;
+        const response = await fetch(`/api/scan/results/${currentScanId}/`);
+        const data = await response.json();
+        let html = '<table class="stats-table"><tr><th>IP</th><th>MAC</th><th>Hostname</th><th>Ports</th></tr>';
+        if (data.hosts.length === 0) html = '<div class="loading">Scanning...</div>';
+        else {
+            for (const host of data.hosts) {
+                html += `<tr><td>${host.ip}</td><td>${host.mac}</td><td>${host.hostname}</td><td>${host.open_ports.join(',')}</td></tr>`;
+            }
+            html += '</table>';
+        }
+        document.getElementById('scan-results-div').innerHTML = html;
+        if (data.status === 'completed') {
+            clearInterval(scanInterval);
+            document.getElementById('scan-btn-start').disabled = false;
+            document.getElementById('scan-btn-stop').disabled = true;
+        }
+    }, 2000);
+}
+
+async function startTrafficSniff() {
+    const filter = document.getElementById('sniffer-filter-val').value;
+    const response = await fetch('/api/sniff/start/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ filter: filter || null, count: 0 })
+    });
+    const data = await response.json();
+    if (response.ok) {
+        currentSnifferId = data.sniffer_id;
+        document.getElementById('sniff-btn-start').disabled = true;
+        document.getElementById('sniff-btn-stop').disabled = false;
+        startSnifferRefresh();
+    } else alert('Error: ' + data.error);
+}
+
+async function stopTrafficSniff() {
+    if (!currentSnifferId) return;
+    await fetch('/api/sniff/stop/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ sniffer_id: currentSnifferId })
+    });
+    if (sniffInterval) clearInterval(sniffInterval);
+    document.getElementById('sniff-btn-start').disabled = false;
+    document.getElementById('sniff-btn-stop').disabled = true;
+    currentSnifferId = null;
+}
+
+async function startSnifferRefresh() {
+    if (sniffInterval) clearInterval(sniffInterval);
+    sniffInterval = setInterval(async () => {
+        if (!currentSnifferId) return;
+        const response = await fetch(`/api/sniff/packets/${currentSnifferId}/`);
+        const data = await response.json();
+        let html = '';
+        if (data.packets.length === 0) html = '<div class="loading">Waiting...</div>';
+        else {
+            for (const pkt of data.packets) {
+                html += `<div class="packet-item">${pkt.timestamp} | ${pkt.protocol} | ${pkt.src}→${pkt.dst} | ${pkt.info}</div>`;
+            }
+        }
+        document.getElementById('packet-list-div').innerHTML = html;
+    }, 1000);
+}
+
+async function refreshSystemInfo() {
+    const response = await fetch('/api/network/info/');
+    const data = await response.json();
+    document.getElementById('info-local-ip-val').textContent = data.local_ip;
+    document.getElementById('info-gateway-ip-val').textContent = data.gateway_ip;
+    document.getElementById('info-attacks-val').textContent = data.active_attacks;
+}
+
+function showStatus(elementId, message, type) {
+    const box = document.getElementById(elementId);
+    box.className = 'status-box show ' + type;
+    box.innerHTML = message;
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie) {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            if (cookie.trim().startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.split('=')[1]);
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 refreshStats();
+refreshSystemInfo();
 </script>
 {% endblock %}

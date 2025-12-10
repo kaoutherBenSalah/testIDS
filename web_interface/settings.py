@@ -14,7 +14,13 @@ SECRET_KEY = 'django-insecure-cybersec-project-change-in-production-2025'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.10', '192.168.1.30']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.10', '192.168.1.30', '192.168.189.10', '192.168.189.30', '*']
+
+# Custom User Model
+AUTH_USER_MODEL = 'cybersec_app.User'
+
+# Machine Type (set via environment variable)
+MACHINE_TYPE = os.getenv('MACHINE_TYPE', 'attacker')  # 'attacker' or 'defender'
 
 # Application definition
 INSTALLED_APPS = [

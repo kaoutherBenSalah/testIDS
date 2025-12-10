@@ -1,0 +1,460 @@
+@startuml IDS_Platform_Class_Diagram
+
+' Simple, clean class diagram without package boxes
+' Naoufel-approved version ;)
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam backgroundColor white
+
+' ================================
+' AUTHENTICATION & USER MANAGEMENT
+' ================================
+
+class User {
+        - id: int
+        - username: string
+        - password: string (hashed)
+        - email: string
+        - role: string
+        - is_active: boolean
+        - created_at: datetime
+        - last_login: datetime
+        --
+        + authenticate(username, password): boolean
+        + logout(): void
+        + has_permission(action): boolean
+        + get_role(): string
+    }
+    
+enum UserRole {
+    ATTACKER
+    DEFENDER
+    ADMIN
+}
+
+class Session {
+        - session_id: string
+        - user_id: int
+        - ip_address: string
+        - created_at: datetime
+        - expires_at: datetime
+        --
+        + is_valid(): boolean
+        + refresh(): void
+        + destroy(): void
+}
+
+User --> UserRole
+User "1" -- "0..*" Session
+
+' ================================
+' ATTACKER SIDE - ATTACK MODULES
+' ================================
+
+abstract class BaseAttack {
+        # target_ip: string
+        # is_running: boolean
+        # packets_sent: int
+        # start_time: datetime
+        # logger: Logger
+        --
+        + start_attack(): void
+        + stop_attack(): void
+        + get_statistics(): dict
+        {abstract} + validate_target(): boolean
+        {abstract} + execute(): void
+}
+
+class ARPSpoofer extends BaseAttack {
+        - target_ip: string
+        - gateway_ip: string
+        - target_mac: string
+        - gateway_mac: string
+        - interface: string
+        - interval: int
+        - capture_enabled: boolean
+        - pcap_writer: PcapWriter
+        --
+        + validate_target(): boolean
+        + spoof(target_ip, spoof_ip, target_mac): void
+        + restore(dest_ip, src_ip, dest_mac, src_mac): void
+        + start_attack(): void
+        + stop_attack(): void
+        + sniff_traffic(count, filter): void
+        + maintain_poisoning(): void
+        - _packet_callback(packet): void
+}
+
+class SYNFlooder extends BaseAttack {
+        - target_ip: string
+        - target_port: int
+        - num_threads: int
+        - duration: int
+        - threads: list<Thread>
+        - lock: ThreadLock
+        --
+        + validate_target(): boolean
+        + start_attack(): void
+        + stop_attack(): void
+        + _send_syn_packet(): void
+        + _generate_random_ip(): string
+        + _worker_thread(): void
+        + get_statistics(): dict
+}
+
+class NetworkScanner {
+        - interface: string
+        - network_range: string
+        - timeout: int
+        - discovered_hosts: list<Host>
+        --
+        + scan_subnet(network): list<Host>
+        + scan_ports(ip, ports): list<int>
+        + identify_active_machines(): list<Host>
+        + get_mac_address(ip): string
+        + ping_sweep(): list<string>
+        + display_scan_results(): void
+}
+
+class TrafficSniffer {
+        - interface: string
+        - filter_string: string
+        - packet_count: int
+        - captured_packets: list<Packet>
+        - is_sniffing: boolean
+        --
+        + start_sniffing(filter, count): void
+        + stop_sniffing(): void
+        + intercept_traffic(): list<Packet>
+        + analyze_packet(packet): dict
+        + export_to_pcap(filename): void
+        + get_statistics(): dict
+}
+
+class Host {
+        + ip_address: string
+        + mac_address: string
+        + hostname: string
+        + open_ports: list<int>
+        + os_guess: string
+        + is_active: boolean
+        --
+        + to_dict(): dict
+}
+
+' ================================
+' DEFENDER SIDE - IDS MODULES
+' ================================
+
+class NetworkDetector {
+        - interface: string
+        - sensitivity: string
+        - arp_table: dict
+        - syn_packets: dict
+        - thresholds: dict
+        - is_monitoring: boolean
+        - packet_count: int
+        - alert_count: int
+        --
+        + start_monitoring(): void
+        + stop_monitoring(): void
+        + get_statistics(): dict
+        - _packet_handler(packet): void
+        - _detect_arp_spoofing(packet): void
+        - _detect_syn_flood(packet): void
+        - _trigger_alert(type, severity, message, details): void
+}
+
+class ARPAnomalyDetector {
+        - arp_cache: dict<ip, mac>
+        - alert_threshold: int
+        --
+        + detect_ip_mac_change(ip, old_mac, new_mac): boolean
+        + detect_arp_flood(packet_rate): boolean
+        + detect_gratuitous_arp(packet): boolean
+        + validate_arp_packet(packet): boolean
+}
+
+class SYNAnomalyDetector {
+        - connection_table: dict
+        - syn_rate_threshold: int
+        - time_window: int
+        --
+        + detect_syn_flood(target_ip, rate): boolean
+        + calculate_syn_rate(target_ip): float
+        + analyze_tcp_flags(packet): dict
+        + detect_half_open_connections(): int
+}
+
+class AlertManager {
+        - alerts: list<Alert>
+        - alert_cooldown: dict
+        - cooldown_period: int
+        --
+        + generate_alert(type, severity, details): Alert
+        + get_recent_alerts(count): list<Alert>
+        + get_alerts_by_type(type): list<Alert>
+        + clear_old_alerts(age): void
+        + send_notification(alert): void
+}
+
+class Alert {
+        - id: int
+        - alert_type: string
+        - severity: string
+        - message: string
+        - details: dict
+        - timestamp: datetime
+        - is_read: boolean
+        - source_ip: string
+        - target_ip: string
+        --
+        + to_dict(): dict
+        + mark_as_read(): void
+}
+
+enum AlertSeverity {
+        LOW
+        MEDIUM
+        HIGH
+        CRITICAL
+}
+
+class IDSConfiguration {
+        - interface: string
+        - sensitivity: string
+        - detection_thresholds: dict
+        - enabled_detectors: list<string>
+        - alert_recipients: list<string>
+        --
+        + set_threshold(detector, value): void
+        + get_threshold(detector): int
+        + enable_detector(name): void
+        + disable_detector(name): void
+        + save_configuration(): void
+        + load_configuration(): void
+}
+
+class AttackBlocker {
+        - blocked_ips: list<string>
+        - firewall_rules: list<Rule>
+        --
+        + block_ip(ip_address): boolean
+        + unblock_ip(ip_address): boolean
+        + send_rst_packet(src, dst): void
+        + restore_arp_tables(): void
+        + update_firewall_rules(): void
+        + get_blocked_ips(): list<string>
+}
+
+NetworkDetector --> ARPAnomalyDetector
+NetworkDetector --> SYNAnomalyDetector
+NetworkDetector --> AlertManager
+AlertManager "1" -- "0..*" Alert
+Alert --> AlertSeverity
+NetworkDetector --> IDSConfiguration
+AttackBlocker ..> NetworkDetector : uses
+
+' ================================
+' LOGGING & UTILITIES
+' ================================
+
+class Logger {
+        - log_file: string
+        - log_level: string
+        - logger_name: string
+        --
+        + info(message): void
+        + warning(message): void
+        + error(message): void
+        + debug(message): void
+        + critical(message): void
+}
+
+class NetworkUtils {
+        {static} + get_local_ip(): string
+        {static} + get_gateway_ip(): string
+        {static} + get_mac(ip): string
+        {static} + is_valid_ip(ip): boolean
+        {static} + enable_ip_forwarding(): void
+        {static} + disable_ip_forwarding(): void
+        {static} + get_network_interfaces(): list<string>
+}
+
+class ReportGenerator {
+        - report_type: string
+        - data: dict
+        --
+        + generate_attack_report(attack): Report
+        + generate_detection_report(alerts): Report
+        + export_to_pdf(report): void
+        + export_to_json(report): void
+        + send_email_report(report, recipient): void
+}
+
+class Report {
+        - title: string
+        - generated_at: datetime
+        - summary: string
+        - details: dict
+        - charts: list<Chart>
+        --
+        + add_section(title, content): void
+        + to_pdf(): bytes
+        + to_json(): string
+}
+
+BaseAttack ..> Logger
+NetworkDetector ..> Logger
+ARPSpoofer ..> NetworkUtils
+SYNFlooder ..> NetworkUtils
+NetworkScanner ..> NetworkUtils
+ReportGenerator "1" -- "0..*" Report
+
+' ================================
+' DJANGO WEB INTERFACE
+' ================================
+
+class AttackerView {
+        + attacker_dashboard(request): HttpResponse
+        + start_arp_attack(request): JsonResponse
+        + stop_arp_attack(request): JsonResponse
+        + start_syn_attack(request): JsonResponse
+        + stop_syn_attack(request): JsonResponse
+        + scan_network(request): JsonResponse
+        + get_attack_statistics(request): JsonResponse
+        + sniff_traffic(request): JsonResponse
+        + restore_arp(request): JsonResponse
+        - _validate_attacker_permission(user): boolean
+}
+
+class DefenderView {
+        + defender_dashboard(request): HttpResponse
+        + get_alerts(request): JsonResponse
+        + get_detection_stats(request): JsonResponse
+        + configure_ids(request): JsonResponse
+        + block_attack(request): JsonResponse
+        + view_logs(request): JsonResponse
+        + get_network_status(request): JsonResponse
+        + export_report(request): HttpResponse
+        - _validate_defender_permission(user): boolean
+}
+
+class AuthenticationView {
+        + login_view(request): HttpResponse
+        + logout_view(request): HttpResponse
+        + profile_view(request): HttpResponse
+        - _create_session(user): Session
+}
+
+class AttackStatistics {
+        - attack_id: string
+        - attack_type: string
+        - target_ip: string
+        - packets_sent: int
+        - duration: int
+        - status: string
+        --
+        + to_dict(): dict
+}
+
+class DetectionStatistics {
+        - packets_analyzed: int
+        - alerts_generated: int
+        - arp_detections: int
+        - syn_detections: int
+        - uptime: timedelta
+        --
+        + to_dict(): dict
+}
+
+class WebSocketHandler {
+        - connection: WebSocket
+        - user: User
+        --
+        + send_alert(alert): void
+        + send_statistics(stats): void
+        + broadcast_to_defenders(message): void
+}
+
+AttackerView ..> User
+AttackerView ..> ARPSpoofer
+AttackerView ..> SYNFlooder
+AttackerView ..> NetworkScanner
+AttackerView ..> AttackStatistics
+
+DefenderView ..> User
+DefenderView ..> NetworkDetector
+DefenderView ..> AlertManager
+DefenderView ..> AttackBlocker
+DefenderView ..> DetectionStatistics
+
+AuthenticationView ..> User
+AuthenticationView ..> Session
+
+WebSocketHandler ..> Alert
+WebSocketHandler ..> DetectionStatistics
+
+' ================================
+' DJANGO MODELS (Database)
+' ================================
+
+class AttackLog {
+        - id: int
+        - user: ForeignKey<User>
+        - attack_type: string
+        - target_ip: string
+        - gateway_ip: string
+        - start_time: datetime
+        - end_time: datetime
+        - packets_sent: int
+        - status: string
+        - notes: text
+        --
+        + save(): void
+        + to_dict(): dict
+}
+
+class DetectionLog {
+        - id: int
+        - alert_type: string
+        - severity: string
+        - source_ip: string
+        - target_ip: string
+        - detected_at: datetime
+        - details: JSONField
+        - is_blocked: boolean
+        - blocked_at: datetime
+        --
+        + save(): void
+        + to_dict(): dict
+}
+
+class Configuration {
+        - id: int
+        - key: string
+        - value: string
+        - category: string
+        - description: text
+        - updated_at: datetime
+        --
+        + get_value(): any
+        + set_value(value): void
+}
+
+AttackLog --> User
+User "1" -- "0..*" AttackLog
+User "1" -- "0..*" DetectionLog
+
+' ================================
+' RELATIONSHIPS
+' ================================
+
+NetworkScanner --> Host : creates
+ARPSpoofer --> TrafficSniffer : uses
+AttackerView --> AttackLog : creates
+DefenderView --> DetectionLog : creates
+AlertManager --> DetectionLog : logs to
+
+@enduml

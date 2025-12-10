@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - IDS Platform{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-box">
+        <div class="login-header">
+            <h1>🔐 IDS Platform Login</h1>
+            <p>Network Intrusion Detection & Attack Simulation</p>
+        </div>
+        
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                <strong>Login Failed</strong><br>
+                {% for error in form.non_field_errors %}
+                    {{ error }}<br>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <form method="post" class="login-form">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="id_username">Username</label>
+                <input type="text" 
+                       name="username" 
+                       id="id_username" 
+                       class="form-control" 
+                       required 
+                       placeholder="Enter username"
+                       autofocus>
+            </div>
+            
+            <div class="form-group">
+                <label for="id_password">Password</label>
+                <input type="password" 
+                       name="password" 
+                       id="id_password" 
+                       class="form-control" 
+                       required 
+                       placeholder="Enter password">
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </button>
+        </form>
+        
+        <div class="login-info">
+            <h4>📝 Default Credentials</h4>
+            <div class="credentials">
+                <div>
+                    <strong>⚔️ Attacker:</strong>
+                    <code>attacker / attack123</code>
+                </div>
+                <div>
+                    <strong>🛡️ Defender:</strong>
+                    <code>defender / defend123</code>
+                </div>
+                <div>
+                    <strong>👨‍💼 Admin:</strong>
+                    <code>admin / admin123</code>
+                </div>
+            </div>
+        </div>
+        
+        <div class="login-footer">
+            <p>⚠️ <strong>WARNING:</strong> Authorized use only</p>
+            <p>This system is for educational and authorized testing purposes only.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.login-box {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    padding: 40px;
+    max-width: 400px;
+    width: 100%;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+}
+
+.login-header h1 {
+    color: #333;
+    margin: 0 0 10px 0;
+    font-size: 28px;
+}
+
+.login-header p {
+    color: #666;
+    margin: 0;
+    font-size: 14px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-block {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.login-info {
+    background: #f5f5f5;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 25px;
+    border-left: 4px solid #667eea;
+}
+
+.login-info h4 {
+    margin-top: 0;
+    color: #333;
+    font-size: 14px;
+}
+
+.credentials {
+    font-size: 12px;
+    color: #555;
+}
+
+.credentials div {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.credentials div:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.credentials code {
+    background: #f9f9f9;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    color: #d63384;
+    margin-left: 5px;
+}
+
+.login-footer {
+    text-align: center;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+    font-size: 12px;
+    color: #666;
+}
+
+.login-footer p {
+    margin: 5px 0;
+}
+
+.alert {
+    padding: 12px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    border-left: 4px solid;
+}
+
+.alert-danger {
+    background: #f8d7da;
+    color: #721c24;
+    border-left-color: #f5c6cb;
+}
+</style>
+{% endblock %}
