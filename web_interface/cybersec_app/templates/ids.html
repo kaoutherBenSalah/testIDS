@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}IDS Monitor - CyberSec Platform{% endblock %}
+
+{% block content %}
+<div class="ids-interface">
+    <h2>📊 Intrusion Detection System Monitor</h2>
+    <p class="info-text">Real-time network threat monitoring</p>
+
+    <div class="ids-status">
+        <h3>System Status</h3>
+        <div class="status-indicator" id="ids-status-indicator">
+            <span class="status-dot status-inactive"></span>
+            <span id="ids-status-text">IDS Inactive</span>
+        </div>
+        <button onclick="window.location.href='/defender/'" class="btn btn-primary">Go to Defender Controls</button>
+    </div>
+
+    <div class="realtime-alerts">
+        <h3>🚨 Real-Time Threat Alerts</h3>
+        <div id="realtime-alerts-feed" class="alerts-feed">
+            <p class="info-message">Waiting for alerts...</p>
+        </div>
+    </div>
+
+    <div class="threat-visualization">
+        <h3>📈 Threat Activity</h3>
+        <div class="chart-container">
+            <canvas id="threat-chart"></canvas>
+        </div>
+    </div>
+
+    <div class="threat-summary">
+        <h3>📋 Threat Summary</h3>
+        <div class="summary-grid" id="threat-summary">
+            <div class="summary-card">
+                <h4>ARP Spoofing</h4>
+                <div class="summary-value" id="arp-threat-count">0</div>
+                <div class="summary-label">Attempts Detected</div>
+            </div>
+            <div class="summary-card">
+                <h4>SYN Flooding</h4>
+                <div class="summary-value" id="syn-threat-count">0</div>
+                <div class="summary-label">Attacks Detected</div>
+            </div>
+            <div class="summary-card">
+                <h4>Total Threats</h4>
+                <div class="summary-value" id="total-threat-count">0</div>
+                <div class="summary-label">All Time</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let alertsFeed = [];
+let maxAlerts = 50;
+let refreshInterval = null;
+
+async function checkIDSStatus() {
+    try {
+        const response = await fetch('/api/detector/alerts/');
+        const data = await response.json();
+        
+        const isActive = data.total_alerts !== undefined;
+        
+        const statusDot = document.querySelector('.status-dot');
+        const statusText = document.getElementById('ids-status-text');
+        
+        if (isActive && data.total_alerts > 0) {
+            statusDot.className = 'status-dot status-active';
+            statusText.textContent = 'IDS Active - Threats Detected';
+            updateThreatDisplay(data);
+        } else if (isActive) {
+            statusDot.className = 'status-dot status-monitoring';
+            statusText.textContent = 'IDS Active - Monitoring';
+            updateThreatDisplay(data);
+        } else {
+            statusDot.className = 'status-dot status-inactive';
+            statusText.textContent = 'IDS Inactive';
+        }
+    } catch (error) {
+        console.error('Failed to check IDS status:', error);
+    }
+}
+
+function updateThreatDisplay(data) {
+    // Update summary counts
+    const arpCount = data.arp_alerts?.length || 0;
+    const synCount = data.syn_alerts?.length || 0;
+    const totalCount = data.total_alerts || 0;
+    
+    document.getElementById('arp-threat-count').textContent = arpCount;
+    document.getElementById('syn-threat-count').textContent = synCount;
+    document.getElementById('total-threat-count').textContent = totalCount;
+    
+    // Update alerts feed
+    const feedDiv = document.getElementById('realtime-alerts-feed');
+    
+    if (totalCount === 0) {
+        feedDiv.innerHTML = '<p class="info-message">No threats detected</p>';
+        return;
+    }
+    
+    let feedHtml = '';
+    
+    // Add ARP alerts to feed
+    if (data.arp_alerts && data.arp_alerts.length > 0) {
+        data.arp_alerts.forEach(alert => {
+            const timestamp = new Date().toLocaleTimeString();
+            feedHtml += `<div class="alert-feed-item alert-arp">
+                <span class="alert-time">${timestamp}</span>
+                <span class="alert-type">🎭 ARP Spoofing</span>
+                <span class="alert-details">IP: ${alert.ip}, MAC: ${alert.mac}, Count: ${alert.count}</span>
+            </div>`;
+        });
+    }
+    
+    // Add SYN alerts to feed
+    if (data.syn_alerts && data.syn_alerts.length > 0) {
+        data.syn_alerts.forEach(alert => {
+            const timestamp = new Date().toLocaleTimeString();
+            feedHtml += `<div class="alert-feed-item alert-syn">
+                <span class="alert-time">${timestamp}</span>
+                <span class="alert-type">💥 SYN Flood</span>
+                <span class="alert-details">Source: ${alert.src_ip}, Port: ${alert.dst_port}, Count: ${alert.count}</span>
+            </div>`;
+        });
+    }
+    
+    feedDiv.innerHTML = feedHtml;
+    
+    // Auto-scroll to latest alert
+    feedDiv.scrollTop = feedDiv.scrollHeight;
+}
+
+// Start monitoring
+checkIDSStatus();
+refreshInterval = setInterval(checkIDSStatus, 2000);
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+
+{% block title %}Attacker Interface - CyberSec Platform{% endblock %}
+
+{% block content %}
+<div class="attacker-interface">
+    <h2>⚔️ Attacker Interface</h2>
+    <p class="warning">⚠️ Use only in authorized testing environments</p>
+
+    <div class="attack-panels">
+        <!-- ARP Spoofing Panel -->
+        <div class="attack-panel">
+            <h3>🎭 ARP Spoofing</h3>
+            <p>Man-in-the-Middle attack via ARP table poisoning</p>
+            
+            <div class="form-group">
+                <label>Target IP:</label>
+                <input type="text" id="arp-target-ip" placeholder="192.168.1.20">
+            </div>
+            
+            <div class="form-group">
+                <label>Gateway IP:</label>
+                <input type="text" id="arp-gateway-ip" placeholder="192.168.1.1">
+            </div>
+            
+            <div class="form-group">
+                <label>Interface (optional):</label>
+                <input type="text" id="arp-interface" placeholder="eth0">
+            </div>
+            
+            <div class="form-group">
+                <label for="arp-interval">Interval (seconds):</label>
+                <input type="number" id="arp-interval" title="Time between ARP packets" value="2" min="1">
+            </div>
+            
+            <div class="button-group">
+                <button onclick="startARPAttack()" class="btn btn-danger" id="arp-start-btn">Start ARP Attack</button>
+                <button onclick="stopARPAttack()" class="btn btn-secondary" id="arp-stop-btn" disabled>Stop Attack</button>
+            </div>
+            
+            <div id="arp-status" class="status-box"></div>
+        </div>
+
+        <!-- SYN Flooding Panel -->
+        <div class="attack-panel">
+            <h3>💥 SYN Flooding</h3>
+            <p>Denial of Service attack via TCP SYN packets</p>
+            
+            <div class="form-group">
+                <label>Target IP:</label>
+                <input type="text" id="syn-target-ip" placeholder="192.168.1.20">
+            </div>
+            
+            <div class="form-group">
+                <label for="syn-target-port">Target Port:</label>
+                <input type="number" id="syn-target-port" title="TCP port to attack" value="80" min="1" max="65535">
+            </div>
+            
+            <div class="form-group">
+                <label for="syn-threads">Number of Threads:</label>
+                <input type="number" id="syn-threads" title="Concurrent attack threads" value="10" min="1" max="50">
+            </div>
+            
+            <div class="form-group">
+                <label>Duration (seconds, optional):</label>
+                <input type="number" id="syn-duration" placeholder="Leave empty for infinite">
+            </div>
+            
+            <div class="button-group">
+                <button onclick="startSYNAttack()" class="btn btn-danger" id="syn-start-btn">Start SYN Flood</button>
+                <button onclick="stopSYNAttack()" class="btn btn-secondary" id="syn-stop-btn" disabled>Stop Attack</button>
+            </div>
+            
+            <div id="syn-status" class="status-box"></div>
+        </div>
+    </div>
+
+    <!-- Attack Statistics -->
+    <div class="stats-panel">
+        <h3>📊 Active Attacks Statistics</h3>
+        <div id="attack-stats" class="stats-display">
+            <p>No active attacks</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentARPAttackId = null;
+let currentSYNAttackId = null;
+let statsInterval = null;
+
+async function startARPAttack() {
+    const targetIp = document.getElementById('arp-target-ip').value;
+    const gatewayIp = document.getElementById('arp-gateway-ip').value;
+    const interface = document.getElementById('arp-interface').value;
+    const interval = document.getElementById('arp-interval').value;
+    
+    if (!targetIp || !gatewayIp) {
+        showNotification('Please fill in required fields', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/attack/arp/start/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                target_ip: targetIp,
+                gateway_ip: gatewayIp,
+                interface: interface || null,
+                interval: interval
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            currentARPAttackId = data.attack_id;
+            document.getElementById('arp-start-btn').disabled = true;
+            document.getElementById('arp-stop-btn').disabled = false;
+            document.getElementById('arp-status').innerHTML = 
+                `<p class="success">✅ ${data.message}</p>`;
+            showNotification('ARP attack started', 'success');
+            startStatsRefresh();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        showNotification('Failed to start ARP attack', 'error');
+    }
+}
+
+async function stopARPAttack() {
+    if (!currentARPAttackId) return;
+    
+    try {
+        const response = await fetch('/api/attack/arp/stop/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ attack_id: currentARPAttackId })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('arp-start-btn').disabled = false;
+            document.getElementById('arp-stop-btn').disabled = true;
+            document.getElementById('arp-status').innerHTML = 
+                `<p class="info">⏹️ ${data.message}</p>`;
+            showNotification('ARP attack stopped', 'info');
+            currentARPAttackId = null;
+            refreshStats();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        showNotification('Failed to stop ARP attack', 'error');
+    }
+}
+
+async function startSYNAttack() {
+    const targetIp = document.getElementById('syn-target-ip').value;
+    const targetPort = document.getElementById('syn-target-port').value;
+    const numThreads = document.getElementById('syn-threads').value;
+    const duration = document.getElementById('syn-duration').value;
+    
+    if (!targetIp) {
+        showNotification('Please enter target IP', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/attack/syn/start/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                target_ip: targetIp,
+                target_port: targetPort,
+                num_threads: numThreads,
+                duration: duration || null
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            currentSYNAttackId = data.attack_id;
+            document.getElementById('syn-start-btn').disabled = true;
+            document.getElementById('syn-stop-btn').disabled = false;
+            document.getElementById('syn-status').innerHTML = 
+                `<p class="success">✅ ${data.message}</p>`;
+            showNotification('SYN Flood started', 'success');
+            startStatsRefresh();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        showNotification('Failed to start SYN Flood', 'error');
+    }
+}
+
+async function stopSYNAttack() {
+    if (!currentSYNAttackId) return;
+    
+    try {
+        const response = await fetch('/api/attack/syn/stop/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ attack_id: currentSYNAttackId })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('syn-start-btn').disabled = false;
+            document.getElementById('syn-stop-btn').disabled = true;
+            document.getElementById('syn-status').innerHTML = 
+                `<p class="info">⏹️ ${data.message}</p>`;
+            showNotification('SYN Flood stopped', 'info');
+            currentSYNAttackId = null;
+            refreshStats();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        showNotification('Failed to stop SYN Flood', 'error');
+    }
+}
+
+async function refreshStats() {
+    try {
+        const response = await fetch('/api/attack/stats/');
+        const data = await response.json();
+        
+        const statsDiv = document.getElementById('attack-stats');
+        
+        if (Object.keys(data.attacks).length === 0) {
+            statsDiv.innerHTML = '<p>No active attacks</p>';
+            if (statsInterval) {
+                clearInterval(statsInterval);
+                statsInterval = null;
+            }
+        } else {
+            let html = '<table class="stats-table"><tr><th>Attack ID</th><th>Type</th><th>Packets Sent</th><th>Status</th></tr>';
+            
+            for (const [id, stats] of Object.entries(data.attacks)) {
+                const status = stats.is_running ? '🟢 Running' : '🔴 Stopped';
+                html += `<tr>
+                    <td>${id}</td>
+                    <td>${stats.type}</td>
+                    <td>${stats.packets_sent}</td>
+                    <td>${status}</td>
+                </tr>`;
+            }
+            
+            html += '</table>';
+            statsDiv.innerHTML = html;
+        }
+    } catch (error) {
+        console.error('Failed to refresh stats:', error);
+    }
+}
+
+function startStatsRefresh() {
+    if (!statsInterval) {
+        statsInterval = setInterval(refreshStats, 2000);
+    }
+}
+
+// Initial stats load
+refreshStats();
+</script>
+{% endblock %}
