@@ -269,6 +269,12 @@ class TrafficSniffer:
             list: List of packet information dictionaries
         """
         return self.captured_packets
+
+    def get_packets(self, limit=100):
+        """Return the most recent captured packets for API consumption"""
+        if limit <= 0:
+            return []
+        return self.captured_packets[-limit:]
     
     def export_to_pcap(self, filename):
         """

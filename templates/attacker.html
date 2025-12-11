@@ -83,7 +83,10 @@
             <label>
                 <input type="checkbox" id="full-scan"> Full Scan (includes port scanning)
             </label>
-            <button onclick="startScan()" class="btn btn-success" style="margin-top: 1rem;">Start Scan</button>
+            <div style="margin-top: 1rem;">
+                <button onclick="startScan()" class="btn btn-success">Start Scan</button>
+                <button onclick="stopScan()" class="btn btn-danger" id="scan-stop-btn" disabled>Stop Scan</button>
+            </div>
             <div id="scan-results" style="margin-top: 1rem;"></div>
         </div>
     </div>
@@ -296,6 +299,8 @@
     let currentSYNAttackId = null;
     let currentScanId = null;
     let currentSnifferId = null;
+    let scanPollInterval = null;
+    let snifferPollInterval = null;
     
     // Switch tabs
     function switchTab(tabName) {
@@ -474,6 +479,12 @@
         const range = document.getElementById('scan-range').value;
         const fullScan = document.getElementById('full-scan').checked;
         
+        // Clear any previous poller
+        if (scanPollInterval) {
+            clearInterval(scanPollInterval);
+            scanPollInterval = null;
+        }
+        
         try {
             const res = await fetch('/api/scan/start', {
                 method: 'POST',
@@ -486,9 +497,10 @@
             
             const data = await res.json();
             currentScanId = data.scan_id;
+            document.getElementById('scan-stop-btn').disabled = false;
             
             // Poll for results
-            const interval = setInterval(async () => {
+            scanPollInterval = setInterval(async () => {
                 const resResults = await fetch(`/api/scan/results/${currentScanId}`);
                 const resultsData = await resResults.json();
                 
@@ -511,8 +523,10 @@
                 
                 document.getElementById('scan-results').innerHTML = html;
                 
-                if (resultsData.status === 'completed') {
-                    clearInterval(interval);
+                if (resultsData.status === 'completed' || resultsData.status === 'stopped') {
+                    clearInterval(scanPollInterval);
+                    scanPollInterval = null;
+                    document.getElementById('scan-stop-btn').disabled = true;
                 }
             }, 1000);
         } catch (e) {
@@ -520,9 +534,35 @@
         }
     }
     
+    async function stopScan() {
+        if (!currentScanId) return;
+        try {
+            await fetch('/api/scan/stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ scan_id: currentScanId })
+            });
+        } catch (e) {
+            console.error('Stop scan error:', e);
+        } finally {
+            if (scanPollInterval) {
+                clearInterval(scanPollInterval);
+                scanPollInterval = null;
+            }
+            document.getElementById('scan-stop-btn').disabled = true;
+            currentScanId = null;
+        }
+    }
+    
     // Start sniffer
     async function startSniffer() {
         const filter = document.getElementById('sniffer-filter').value;
+        
+        // Clear existing poller
+        if (snifferPollInterval) {
+            clearInterval(snifferPollInterval);
+            snifferPollInterval = null;
+        }
         
         try {
             const res = await fetch('/api/sniff/start', {
@@ -536,7 +576,7 @@
             document.getElementById('sniffer-stop-btn').disabled = false;
             
             // Poll for packets
-            setInterval(async () => {
+            snifferPollInterval = setInterval(async () => {
                 const resPackets = await fetch(`/api/sniff/packets/${currentSnifferId}`);
                 const packetsData = await resPackets.json();
                 
@@ -568,11 +608,15 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sniffer_id: currentSnifferId })
             });
-            
-            document.getElementById('sniffer-stop-btn').disabled = true;
-            currentSnifferId = null;
         } catch (e) {
             alert('Error: ' + e.message);
+        } finally {
+            if (snifferPollInterval) {
+                clearInterval(snifferPollInterval);
+                snifferPollInterval = null;
+            }
+            document.getElementById('sniffer-stop-btn').disabled = true;
+            currentSnifferId = null;
         }
     }
     

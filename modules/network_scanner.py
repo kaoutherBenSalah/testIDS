@@ -70,6 +70,7 @@ class NetworkScanner:
         self.timeout = timeout
         self.logger = get_logger("NetworkScanner")
         self.discovered_hosts = []
+        self.stop_requested = False
     
     def scan_subnet(self, network_range):
         """
@@ -83,6 +84,7 @@ class NetworkScanner:
         """
         self.logger.info(f"🔍 Scanning network: {network_range}")
         self.discovered_hosts = []
+        self.stop_requested = False
         
         try:
             # Create ARP request packet
@@ -94,8 +96,15 @@ class NetworkScanner:
             self.logger.info("Sending ARP requests...")
             result = srp(packet, timeout=self.timeout, verbose=False, iface=self.interface)[0]
             
+            if self.stop_requested:
+                self.logger.info("🛑 Scan aborted before processing responses")
+                return []
+            
             # Process responses
             for sent, received in result:
+                if self.stop_requested:
+                    self.logger.info("🛑 Scan aborted during processing")
+                    break
                 ip = received.psrc
                 mac = received.hwsrc
                 
@@ -133,6 +142,9 @@ class NetworkScanner:
         open_ports = []
         
         for port in ports:
+            if self.stop_requested:
+                self.logger.info("🛑 Port scan aborted")
+                break
             try:
                 # Create TCP SYN packet
                 packet = IP(dst=ip_address) / TCP(dport=port, flags="S")
@@ -153,22 +165,33 @@ class NetworkScanner:
         
         self.logger.info(f"📊 Port scan complete. Found {len(open_ports)} open ports.")
         return open_ports
+
+    def stop(self):
+        """Signal the scanner to stop after current operation."""
+        self.stop_requested = True
     
-    def identify_active_machines(self, network_range):
+    def identify_active_machines(self, network_range, full_scan=False):
         """
         Identify all active machines on network
-        Alias for scan_subnet with additional info gathering
+        Alias for scan_subnet with optional port scanning
         
         Args:
             network_range (str): Network range in CIDR notation
+            full_scan (bool): When True, also perform port scan and OS guess
         
         Returns:
             list<Host>: List of active hosts with detailed info
         """
         hosts = self.scan_subnet(network_range)
         
+        if not full_scan:
+            return hosts
+        
         # For each host, gather additional information
         for host in hosts:
+            if self.stop_requested:
+                self.logger.info("🛑 Full scan aborted")
+                break
             self.logger.info(f"Gathering info for {host.ip}...")
             
             # Scan common ports

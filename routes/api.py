@@ -103,6 +103,27 @@ def get_scan_results(scan_id):
         return jsonify({'error': str(e)}), 500
 
 
+@api_bp.route('/scan/stop', methods=['POST'])
+@require_attacker
+def stop_scan():
+    """Signal a running scan to stop"""
+    try:
+        data = request.get_json()
+        scan_id = data.get('scan_id')
+        if not scan_id or scan_id not in active_scanners:
+            return jsonify({'error': 'Scan not found'}), 404
+        
+        scan = active_scanners[scan_id]
+        scanner_obj = scan.get('object')
+        if hasattr(scanner_obj, 'stop'):
+            scanner_obj.stop()
+        scan['status'] = 'stopped'
+        
+        return jsonify({'status': 'stopped', 'message': 'Scan stop requested'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 # ============================================================================
 # TRAFFIC SNIFFER ENDPOINTS
 # ============================================================================
@@ -114,15 +135,15 @@ def start_sniffer():
     try:
         data = request.get_json()
         bpf_filter = data.get('filter')
+        interface = data.get('interface')
         
-        # Create sniffer
-        sniffer = TrafficSniffer(filter=bpf_filter)
+        # Create sniffer and attach callback to keep packets in memory
+        sniffer = TrafficSniffer(interface=interface)
         sniffer_id = str(uuid.uuid4())
         
-        # Start in background
         def run_sniff():
             try:
-                sniffer.start()
+                sniffer.start_sniffing(filter_str=bpf_filter)
             except Exception as e:
                 print(f"Sniffer Error: {e}")
         
@@ -158,13 +179,12 @@ def get_packets(sniffer_id):
         sniffer_info = active_sniffers[sniffer_id]
         sniffer = sniffer_info['object']
         
-        # Get packets from sniffer
-        packets = sniffer.get_packets(limit=50) if hasattr(sniffer, 'get_packets') else []
+        packets = sniffer.get_packets(limit=50)
         
         return jsonify({
             'sniffer_id': sniffer_id,
             'packets': packets,
-            'status': 'capturing'
+            'status': 'capturing' if sniffer.is_sniffing else 'stopped'
         }), 200
     
     except Exception as e:
