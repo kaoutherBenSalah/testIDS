@@ -4,80 +4,85 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}IDS{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/hacker-theme.css') }}">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: #333;
-            min-height: 100vh;
-        }
-        
         .navbar {
-            background: rgba(0, 0, 0, 0.8);
+            background: #0D0D0D;
             padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            color: white;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            border-bottom: 2px solid #B5E853;
+            box-shadow: 0 2px 10px rgba(181, 232, 83, 0.3);
         }
         
         .navbar h1 {
-            font-size: 1.5rem;
+            font-size: 1.8rem;
+            color: #B5E853;
+            margin: 0;
         }
         
         .navbar .user-info {
             display: flex;
-            gap: 1rem;
+            gap: 1.5rem;
             align-items: center;
+            color: #FFFFFF;
+        }
+        
+        .navbar .user-info span {
+            padding: 8px 16px;
+            background: #2A2A2A;
+            border: 1px solid #B5E853;
+            border-radius: 5px;
         }
         
         .navbar a {
-            color: #4CAF50;
+            color: #FF4444;
             text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            transition: background 0.3s;
+            padding: 8px 16px;
+            border: 1px solid #FF4444;
+            background: #2A2A2A;
+            border-radius: 5px;
+            transition: all 0.3s ease;
         }
         
         .navbar a:hover {
-            background: rgba(76, 175, 80, 0.2);
+            background: #FF4444;
+            color: #1A1A1A;
         }
         
         .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
         }
         
         .content {
-            background: white;
-            border-radius: 8px;
-            padding: 2rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            background: transparent;
+            border-radius: 0;
+            padding: 0;
         }
         
         footer {
             text-align: center;
             padding: 2rem;
-            color: rgba(255, 255, 255, 0.7);
+            color: #8D8D8D;
             margin-top: 2rem;
+            border-top: 1px dashed #B5E853;
+        }
+        
+        footer p {
+            padding: 0;
         }
     </style>
 </head>
 <body>
     {% if user_id %}
-    <div class="navbar">
-        <h1>🔐 IDS - Flask</h1>
+    <div class="navbar fade-in">
+        <h1>$ ./IDS.sh</h1>
         <div class="user-info">
-            <span>👤 {{ user_id }} ({{ user_role }})</span>
-            <a href="/logout">Logout</a>
+            <span>👤 {{ user_id }} <span class="green">[{{ user_role }}]</span></span>
+            <a href="/logout">>> Logout</a>
         </div>
     </div>
     {% endif %}
@@ -89,7 +94,8 @@
     </div>
     
     <footer>
-        <p>IDS v2.0 - Educational Cybersecurity Platform</p>
+        <p><span class="green">IDS v2.0</span> - Educational Cybersecurity Platform</p>
+        <p class="gray">Built with Flask & Scapy</p>
     </footer>
 </body>
 </html>

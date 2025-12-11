@@ -4,50 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - IDS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/hacker-theme.css') }}">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         
-        .login-container {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        .login-wrapper {
             width: 100%;
-            max-width: 400px;
-        }
-        
-        .login-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        
-        .login-header h1 {
-            color: #1e3c72;
-            margin-bottom: 0.5rem;
-        }
-        
-        .login-header p {
-            color: #666;
+            max-width: 450px;
+            padding: 20px;
         }
         
         .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-group label {
             display: block;
             margin-bottom: 0.5rem;
             color: #333;
@@ -75,100 +47,54 @@
             color: white;
             border: none;
             border-radius: 4px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        
-        .login-btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        .login-btn:active {
-            transform: translateY(0);
-        }
-        
-        .error-message {
-            background: #fee;
-            color: #c33;
-            padding: 0.75rem;
-            border-radius: 4px;
             margin-bottom: 1rem;
-            border-left: 4px solid #c33;
-        }
-        
-        .default-users {
-            background: #f0f8ff;
-            padding: 1rem;
-            border-radius: 4px;
-            margin-top: 1.5rem;
-            font-size: 0.85rem;
-            border-left: 4px solid #2a5298;
-        }
-        
-        .default-users h3 {
-            margin-bottom: 0.5rem;
-            color: #1e3c72;
-        }
-        
-        .default-users ul {
-            list-style: none;
-            color: #555;
-        }
-        
-        .default-users li {
-            margin: 0.3rem 0;
-            font-family: monospace;
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-header">
-            <h1>🔐 IDS</h1>
-            <p>Educational Cybersecurity Platform</p>
-        </div>
-        
-        {% if error %}
-        <div class="error-message">
-            {{ error }}
-        </div>
-        {% endif %}
-        
-        <form method="post">
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input 
-                    type="text" 
-                    id="username" 
-                    name="username" 
-                    required 
-                    autofocus
-                    placeholder="Enter username"
-                >
-            </div>
+    <div class="login-wrapper fade-in">
+        <div class="login">
+            <h2 class="login-header">$ ./IDS-Login.sh</h2>
+            <form class="login-container" method="post">
+                {% if error %}
+                <div class="alert alert-danger">
+                    ⚠️ {{ error }}
+                </div>
+                {% endif %}
+                
+                <p>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        placeholder="Username" 
+                        required 
+                        autofocus
+                    >
+                </p>
+                
+                <p>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Password" 
+                        required
+                    >
+                </p>
+                
+                <p>
+                    <input type="submit" value=">> Access System">
+                </p>
+            </form>
             
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    name="password" 
-                    required
-                    placeholder="Enter password"
-                >
+            <div class="credentials-info">
+                <h3>📝 Test Credentials:</h3>
+                <ul style="margin-top: 10px;">
+                    <li><span class="green">Attacker:</span> attacker / attack123</li>
+                    <li><span class="blue">Defender:</span> defender / defend123</li>
+                </ul>
             </div>
-            
-            <button type="submit" class="login-btn">Login</button>
-        </form>
-        
-        <div class="default-users">
-            <h3>📝 Default Users:</h3>
-            <ul>
-                <li>attacker / attack123</li>
-                <li>defender / defend123</li>
-            </ul>
         </div>
     </div>
 </body>

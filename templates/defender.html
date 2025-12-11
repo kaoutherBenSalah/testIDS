@@ -3,32 +3,68 @@
 {% block title %}🛡️ Defender Interface{% endblock %}
 
 {% block content %}
-<div class="defender-container">
-    <h1>🛡️ Defender Interface</h1>
-    <p style="color: #666; margin-bottom: 2rem;">Intrusion Detection System Monitoring</p>
-    
-    <div class="card">
-        <h2>📊 Detection Logs</h2>
-        <p style="color: #666;">Real-time monitoring of detected attacks coming soon...</p>
+<div class="defender-container fade-in">
+    <div class="dashboard-header">
+        <h1>🛡️ Defender Console</h1>
+        <p class="gray">Intrusion Detection System Monitoring</p>
     </div>
     
     <div class="card">
-        <h2>📈 Statistics</h2>
-        <p style="color: #666;">Attack statistics and analytics coming soon...</p>
+        <h2 class="card-header">📊 Detection Logs</h2>
+        <div class="card-body">
+            <div class="terminal-output">
+                <p>Initializing IDS monitoring system...</p>
+                <p>Status: <span class="green">READY</span></p>
+                <p>Real-time monitoring of detected attacks coming soon...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2 class="card-header">📈 Statistics</h2>
+        <div class="card-body">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Scans</h3>
+                    <div class="value green">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Attacks Detected</h3>
+                    <div class="value red">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Packets Analyzed</h3>
+                    <div class="value blue">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Alerts Triggered</h3>
+                    <div class="value yellow">0</div>
+                </div>
+            </div>
+            <p class="gray text-center">Attack statistics and analytics coming soon...</p>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2 class="card-header">🔧 IDS Configuration</h2>
+        <div class="card-body">
+            <div class="form-group">
+                <label>Detection Mode:</label>
+                <select class="form-control">
+                    <option>Passive Monitoring</option>
+                    <option>Active Defense (Coming Soon)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Alert Threshold:</label>
+                <select class="form-control">
+                    <option>Low</option>
+                    <option selected>Medium</option>
+                    <option>High</option>
+                </select>
+            </div>
+            <button class="btn btn-success" disabled>Apply Configuration</button>
+        </div>
     </div>
 </div>
-
-<style>
-    .defender-container {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    
-    .card {
-        background: #f9f9f9;
-        padding: 1.5rem;
-        border-radius: 8px;
-        margin-bottom: 1.5rem;
-        border-left: 4px solid #ff5722;
-    }
-</style>
 {% endblock %}
