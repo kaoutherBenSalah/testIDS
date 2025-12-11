@@ -1,0 +1,622 @@
+{% extends "base.html" %}
+
+{% block title %}⚔️ Attacker Interface{% endblock %}
+
+{% block content %}
+<div class="attacker-container">
+    <h1>⚔️ Attacker Interface</h1>
+    <p style="color: #666; margin-bottom: 2rem;">{{ local_ip }} | Gateway: {{ gateway_ip }}</p>
+    
+    <!-- TAB NAVIGATION -->
+    <div class="tab-navigation">
+        <button class="tab-btn active" onclick="switchTab('attacks')">🎯 Attacks</button>
+        <button class="tab-btn" onclick="switchTab('scanner')">🔍 Scanner</button>
+        <button class="tab-btn" onclick="switchTab('sniffer')">📦 Sniffer</button>
+        <button class="tab-btn" onclick="switchTab('info')">ℹ️ Info</button>
+    </div>
+    
+    <!-- TAB 1: ATTACKS -->
+    <div id="attacks-tab" class="tab-content active">
+        <h2>🎯 Attack Modules</h2>
+        
+        <!-- ARP Spoofing -->
+        <div class="card">
+            <h3>🎭 ARP Spoofing (Man-in-the-Middle)</h3>
+            <div class="form-group">
+                <label>Victim IP:</label>
+                <input type="text" id="arp-victim-ip" placeholder="192.168.189.20" value="192.168.189.20">
+            </div>
+            <div class="form-group">
+                <label>Gateway IP:</label>
+                <input type="text" id="arp-gw-ip" placeholder="192.168.189.2" value="192.168.189.2">
+            </div>
+            <div class="form-group">
+                <label>Interface:</label>
+                <input type="text" id="arp-interface" placeholder="eth0" value="eth0">
+            </div>
+            <div class="form-group">
+                <label>Interval (seconds):</label>
+                <input type="number" id="arp-interval" value="2" min="1" max="10">
+            </div>
+            <button onclick="startARPAttack()" class="btn btn-success">Start ARP Attack</button>
+            <button onclick="stopARPAttack()" class="btn btn-danger" disabled id="arp-stop-btn">Stop Attack</button>
+            <div id="arp-status" style="margin-top: 1rem; padding: 1rem; border-radius: 4px;"></div>
+        </div>
+        
+        <!-- SYN Flooding -->
+        <div class="card">
+            <h3>💥 SYN Flooding (DoS)</h3>
+            <div class="form-group">
+                <label>Target IP:</label>
+                <input type="text" id="syn-target-ip" placeholder="192.168.189.20" value="192.168.189.20">
+            </div>
+            <div class="form-group">
+                <label>Target Port:</label>
+                <input type="number" id="syn-port" value="80" min="1" max="65535">
+            </div>
+            <div class="form-group">
+                <label>Threads:</label>
+                <input type="number" id="syn-threads" value="10" min="1" max="100">
+            </div>
+            <button onclick="startSYNAttack()" class="btn btn-success">Start SYN Flood</button>
+            <button onclick="stopSYNAttack()" class="btn btn-danger" disabled id="syn-stop-btn">Stop Attack</button>
+            <div id="syn-status" style="margin-top: 1rem; padding: 1rem; border-radius: 4px;"></div>
+        </div>
+        
+        <!-- Active Attacks -->
+        <div class="card">
+            <h3>📊 Active Attacks</h3>
+            <div id="attack-stats" style="font-family: monospace; background: #f5f5f5; padding: 1rem; border-radius: 4px;">
+                <p>No active attacks</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- TAB 2: SCANNER -->
+    <div id="scanner-tab" class="tab-content">
+        <h2>🔍 Network Scanner</h2>
+        <div class="card">
+            <div class="form-group">
+                <label>Network Range (CIDR):</label>
+                <input type="text" id="scan-range" placeholder="192.168.189.0/24" value="192.168.189.0/24">
+            </div>
+            <label>
+                <input type="checkbox" id="full-scan"> Full Scan (includes port scanning)
+            </label>
+            <button onclick="startScan()" class="btn btn-success" style="margin-top: 1rem;">Start Scan</button>
+            <div id="scan-results" style="margin-top: 1rem;"></div>
+        </div>
+    </div>
+    
+    <!-- TAB 3: SNIFFER -->
+    <div id="sniffer-tab" class="tab-content">
+        <h2>📦 Traffic Sniffer</h2>
+        <div class="card">
+            <div class="form-group">
+                <label>BPF Filter (optional):</label>
+                <input type="text" id="sniffer-filter" placeholder="tcp port 80" value="">
+            </div>
+            <button onclick="startSniffer()" class="btn btn-success">Start Sniffing</button>
+            <button onclick="stopSniffer()" class="btn btn-danger" disabled id="sniffer-stop-btn">Stop</button>
+            <div id="packet-list" style="margin-top: 1rem; max-height: 400px; overflow-y: auto;"></div>
+        </div>
+    </div>
+    
+    <!-- TAB 4: INFO -->
+    <div id="info-tab" class="tab-content">
+        <h2>ℹ️ System Information</h2>
+        
+        <div class="card">
+            <h3>🌐 Network</h3>
+            <p><strong>Local IP:</strong> <span id="info-local-ip">{{ local_ip }}</span></p>
+            <p><strong>Gateway IP:</strong> <span id="info-gateway-ip">{{ gateway_ip }}</span></p>
+        </div>
+        
+        <!-- Shield CPU Card -->
+        <div class="card shield-cpu-card">
+            <h3>🛡️ Shield CPU</h3>
+            <div style="display: flex; gap: 2rem;">
+                <div style="flex: 1;">
+                    <p><strong>CPU Usage:</strong> <span id="shield-cpu-usage">0%</span></p>
+                    <div class="cpu-bar">
+                        <div id="shield-cpu-bar" class="cpu-bar-fill"></div>
+                    </div>
+                </div>
+                <div style="flex: 1;">
+                    <p><strong>RAM Usage:</strong> <span id="shield-ram-usage">0%</span></p>
+                    <div class="ram-bar">
+                        <div id="shield-ram-bar" class="ram-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+            <p id="shield-status" style="margin-top: 1rem; font-weight: bold;">✅ System Status: Healthy</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .attacker-container {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .tab-navigation {
+        display: flex;
+        gap: 1rem;
+        margin: 2rem 0;
+        border-bottom: 2px solid #ddd;
+    }
+    
+    .tab-btn {
+        padding: 0.75rem 1.5rem;
+        background: transparent;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        font-weight: 600;
+        color: #666;
+        transition: all 0.3s;
+    }
+    
+    .tab-btn.active {
+        color: #1e3c72;
+        border-bottom-color: #1e3c72;
+    }
+    
+    .tab-btn:hover {
+        color: #1e3c72;
+    }
+    
+    .tab-content {
+        display: none;
+        animation: fadeIn 0.3s;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .card {
+        background: #f9f9f9;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid #1e3c72;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #333;
+    }
+    
+    .form-group input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+    
+    .form-group input:focus {
+        outline: none;
+        border-color: #1e3c72;
+        box-shadow: 0 0 5px rgba(30, 60, 114, 0.2);
+    }
+    
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s;
+        margin-right: 0.5rem;
+    }
+    
+    .btn-success {
+        background: #4CAF50;
+        color: white;
+    }
+    
+    .btn-success:hover {
+        background: #45a049;
+    }
+    
+    .btn-danger {
+        background: #f44336;
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        background: #da190b;
+    }
+    
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .status-success {
+        background: #d4edda;
+        color: #155724;
+        padding: 1rem;
+        border-radius: 4px;
+        border-left: 4px solid #28a745;
+    }
+    
+    .status-error {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 1rem;
+        border-radius: 4px;
+        border-left: 4px solid #f5c6cb;
+    }
+    
+    /* Shield CPU Styles */
+    .shield-cpu-card {
+        background: linear-gradient(135deg, #f0f8ff 0%, #e6f2ff 100%);
+        border-left-color: #0066cc;
+    }
+    
+    .cpu-bar, .ram-bar {
+        height: 20px;
+        background: #e0e0e0;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 0.5rem;
+    }
+    
+    .cpu-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4CAF50 0%, #ff9800 100%);
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+    
+    .ram-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #2196F3 0%, #f44336 100%);
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+</style>
+
+<script>
+    let currentARPAttackId = null;
+    let currentSYNAttackId = null;
+    let currentScanId = null;
+    let currentSnifferId = null;
+    
+    // Switch tabs
+    function switchTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Show selected tab
+        document.getElementById(tabName + '-tab').classList.add('active');
+        
+        // Update buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+    }
+    
+    // Start ARP Attack
+    async function startARPAttack() {
+        const victimIP = document.getElementById('arp-victim-ip').value;
+        const gatewayIP = document.getElementById('arp-gw-ip').value;
+        const iface = document.getElementById('arp-interface').value;
+        const interval = document.getElementById('arp-interval').value;
+        
+        if (!victimIP || !gatewayIP) {
+            alert('Please fill all fields');
+            return;
+        }
+        
+        try {
+            const res = await fetch('/api/attack/arp/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    target_ip: victimIP,
+                    gateway_ip: gatewayIP,
+                    interface: iface,
+                    interval: parseInt(interval)
+                })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                currentARPAttackId = data.attack_id;
+                showStatus('arp-status', '✅ ' + data.message, 'success');
+                document.getElementById('arp-stop-btn').disabled = false;
+                refreshAttackStats();
+                setInterval(refreshAttackStats, 2000);
+            } else {
+                showStatus('arp-status', '❌ ' + data.error, 'error');
+            }
+        } catch (e) {
+            showStatus('arp-status', '❌ Error: ' + e.message, 'error');
+        }
+    }
+    
+    // Stop ARP Attack
+    async function stopARPAttack() {
+        if (!currentARPAttackId) return;
+        
+        try {
+            const res = await fetch('/api/attack/arp/stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ attack_id: currentARPAttackId })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                showStatus('arp-status', '✅ ' + data.message, 'success');
+                document.getElementById('arp-stop-btn').disabled = true;
+                currentARPAttackId = null;
+            } else {
+                showStatus('arp-status', '❌ ' + data.error, 'error');
+            }
+        } catch (e) {
+            showStatus('arp-status', '❌ Error: ' + e.message, 'error');
+        }
+    }
+    
+    // Start SYN Attack
+    async function startSYNAttack() {
+        const targetIP = document.getElementById('syn-target-ip').value;
+        const port = document.getElementById('syn-port').value;
+        const threads = document.getElementById('syn-threads').value;
+        
+        if (!targetIP) {
+            alert('Please fill target IP');
+            return;
+        }
+        
+        try {
+            const res = await fetch('/api/attack/syn/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    target_ip: targetIP,
+                    target_port: parseInt(port),
+                    threads: parseInt(threads)
+                })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                currentSYNAttackId = data.attack_id;
+                showStatus('syn-status', '✅ ' + data.message, 'success');
+                document.getElementById('syn-stop-btn').disabled = false;
+                refreshAttackStats();
+            } else {
+                showStatus('syn-status', '❌ ' + data.error, 'error');
+            }
+        } catch (e) {
+            showStatus('syn-status', '❌ Error: ' + e.message, 'error');
+        }
+    }
+    
+    // Stop SYN Attack
+    async function stopSYNAttack() {
+        if (!currentSYNAttackId) return;
+        
+        try {
+            const res = await fetch('/api/attack/syn/stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ attack_id: currentSYNAttackId })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                showStatus('syn-status', '✅ ' + data.message, 'success');
+                document.getElementById('syn-stop-btn').disabled = true;
+                currentSYNAttackId = null;
+            } else {
+                showStatus('syn-status', '❌ ' + data.error, 'error');
+            }
+        } catch (e) {
+            showStatus('syn-status', '❌ Error: ' + e.message, 'error');
+        }
+    }
+    
+    // Refresh attack stats
+    async function refreshAttackStats() {
+        try {
+            const res = await fetch('/api/attack/stats');
+            const data = await res.json();
+            
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<tr><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">Type</th><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">Target</th><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">Status</th></tr>';
+            
+            for (const [id, attack] of Object.entries(data.attacks)) {
+                html += `<tr>
+                    <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">${attack.type}</td>
+                    <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">${attack.target_ip}</td>
+                    <td style="padding: 0.5rem; border-bottom: 1px solid #eee;"><span style="color: #4CAF50;">●</span> ${attack.status}</td>
+                </tr>`;
+            }
+            
+            html += '</table>';
+            if (Object.keys(data.attacks).length === 0) {
+                html = '<p style="color: #999;">No active attacks</p>';
+            }
+            
+            document.getElementById('attack-stats').innerHTML = html;
+        } catch (e) {
+            console.error('Stats error:', e);
+        }
+    }
+    
+    // Start scan
+    async function startScan() {
+        const range = document.getElementById('scan-range').value;
+        const fullScan = document.getElementById('full-scan').checked;
+        
+        try {
+            const res = await fetch('/api/scan/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    network_range: range,
+                    full_scan: fullScan
+                })
+            });
+            
+            const data = await res.json();
+            currentScanId = data.scan_id;
+            
+            // Poll for results
+            const interval = setInterval(async () => {
+                const resResults = await fetch(`/api/scan/results/${currentScanId}`);
+                const resultsData = await resResults.json();
+                
+                let html = '<h3>📊 Scan Results</h3>';
+                if (resultsData.hosts.length > 0) {
+                    html += '<table style="width: 100%; border-collapse: collapse;">';
+                    html += '<tr><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">IP</th><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">MAC</th><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">Hostname</th></tr>';
+                    
+                    for (const host of resultsData.hosts) {
+                        html += `<tr>
+                            <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">${host.ip}</td>
+                            <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">${host.mac || 'N/A'}</td>
+                            <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">${host.hostname || 'Unknown'}</td>
+                        </tr>`;
+                    }
+                    html += '</table>';
+                } else {
+                    html += '<p style="color: #999;">Scanning...</p>';
+                }
+                
+                document.getElementById('scan-results').innerHTML = html;
+                
+                if (resultsData.status === 'completed') {
+                    clearInterval(interval);
+                }
+            }, 1000);
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+    
+    // Start sniffer
+    async function startSniffer() {
+        const filter = document.getElementById('sniffer-filter').value;
+        
+        try {
+            const res = await fetch('/api/sniff/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filter: filter || null })
+            });
+            
+            const data = await res.json();
+            currentSnifferId = data.sniffer_id;
+            document.getElementById('sniffer-stop-btn').disabled = false;
+            
+            // Poll for packets
+            setInterval(async () => {
+                const resPackets = await fetch(`/api/sniff/packets/${currentSnifferId}`);
+                const packetsData = await resPackets.json();
+                
+                let html = '<h3>📦 Captured Packets</h3>';
+                if (packetsData.packets.length > 0) {
+                    for (const pkt of packetsData.packets.slice(-20)) {
+                        html += `<div style="padding: 0.5rem; border-bottom: 1px solid #eee; font-family: monospace; font-size: 0.85rem;">
+                            <strong>${pkt.protocol}</strong> | ${pkt.src} → ${pkt.dst}
+                        </div>`;
+                    }
+                } else {
+                    html += '<p style="color: #999;">No packets captured</p>';
+                }
+                
+                document.getElementById('packet-list').innerHTML = html;
+            }, 1000);
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+    
+    // Stop sniffer
+    async function stopSniffer() {
+        if (!currentSnifferId) return;
+        
+        try {
+            await fetch('/api/sniff/stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sniffer_id: currentSnifferId })
+            });
+            
+            document.getElementById('sniffer-stop-btn').disabled = true;
+            currentSnifferId = null;
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+    
+    // Show status message
+    function showStatus(elementId, message, type) {
+        const elem = document.getElementById(elementId);
+        elem.className = 'status-' + type;
+        elem.innerHTML = message;
+    }
+    
+    // Refresh system info (Shield CPU)
+    async function refreshSystemInfo() {
+        try {
+            const res = await fetch('/api/network/info');
+            const data = await res.json();
+            
+            const cpuUsage = data.cpu_usage;
+            const ramUsage = data.ram_usage;
+            
+            document.getElementById('shield-cpu-usage').textContent = cpuUsage.toFixed(1) + '%';
+            document.getElementById('shield-cpu-bar').style.width = cpuUsage + '%';
+            
+            document.getElementById('shield-ram-usage').textContent = ramUsage.toFixed(1) + '%';
+            document.getElementById('shield-ram-bar').style.width = ramUsage + '%';
+            
+            // Update status
+            const statusElem = document.getElementById('shield-status');
+            if (cpuUsage > 90 || ramUsage > 95) {
+                statusElem.innerHTML = '🚨 System Status: <span style="color: #f44336;">CRITICAL</span>';
+            } else if (cpuUsage > 80 || ramUsage > 85) {
+                statusElem.innerHTML = '⚠️ System Status: <span style="color: #ff9800;">WARNING</span>';
+            } else {
+                statusElem.innerHTML = '✅ System Status: <span style="color: #4CAF50;">HEALTHY</span>';
+            }
+        } catch (e) {
+            console.error('System info error:', e);
+        }
+    }
+    
+    // Refresh system info every 2 seconds
+    setInterval(refreshSystemInfo, 2000);
+    refreshSystemInfo();
+    
+    // Refresh stats periodically
+    setInterval(refreshAttackStats, 3000);
+</script>
+{% endblock %}

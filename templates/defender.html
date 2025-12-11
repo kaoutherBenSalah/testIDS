@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}🛡️ Defender Interface{% endblock %}
+
+{% block content %}
+<div class="defender-container">
+    <h1>🛡️ Defender Interface</h1>
+    <p style="color: #666; margin-bottom: 2rem;">Intrusion Detection System Monitoring</p>
+    
+    <div class="card">
+        <h2>📊 Detection Logs</h2>
+        <p style="color: #666;">Real-time monitoring of detected attacks coming soon...</p>
+    </div>
+    
+    <div class="card">
+        <h2>📈 Statistics</h2>
+        <p style="color: #666;">Attack statistics and analytics coming soon...</p>
+    </div>
+</div>
+
+<style>
+    .defender-container {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .card {
+        background: #f9f9f9;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid #ff5722;
+    }
+</style>
+{% endblock %}

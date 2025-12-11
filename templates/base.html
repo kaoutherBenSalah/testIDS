@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}testIDS{% endblock %}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .navbar {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .navbar h1 {
+            font-size: 1.5rem;
+        }
+        
+        .navbar .user-info {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .navbar a {
+            color: #4CAF50;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+        
+        .navbar a:hover {
+            background: rgba(76, 175, 80, 0.2);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .content {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    {% if user_id %}
+    <div class="navbar">
+        <h1>🔐 testIDS - Flask</h1>
+        <div class="user-info">
+            <span>👤 {{ user_id }} ({{ user_role }})</span>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="container">
+        <div class="content">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+    
+    <footer>
+        <p>testIDS v2.0 - Educational Cybersecurity Platform</p>
+    </footer>
+</body>
+</html>

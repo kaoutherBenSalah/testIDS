@@ -1,0 +1,204 @@
+@startuml
+' Detailed class diagram for IDS platform
+skinparam monochrome true
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+' ===== Models (Database) =====
+package "Database Models" {
+  class User {
+    +username: string
+    +password: string (hashed)
+    +email: string
+    +role: UserRole
+    +machine_type: string
+    +groups: ManyToMany
+    +user_permissions: ManyToMany
+    --
+    +is_attacker(): boolean
+    +is_defender(): boolean
+    +is_admin_user(): boolean
+  }
+
+  enum UserRole {
+    ATTACKER
+    DEFENDER
+    ADMIN
+  }
+
+  class AttackLog {
+    +user: ForeignKey(User)
+    +attack_type: string
+    +target_ip: IPAddress
+    +gateway_ip: IPAddress
+    +target_port: integer
+    +start_time: datetime
+    +end_time: datetime
+    +packets_sent: integer
+    +status: string
+    +notes: text
+  }
+
+  class DetectionLog {
+    +alert_type: string
+    +severity: string
+    +source_ip: IPAddress
+    +target_ip: IPAddress
+    +detected_at: datetime
+    +details: JSON
+    +is_blocked: boolean
+    +blocked_at: datetime
+  }
+
+  class Configuration {
+    +key: string
+    +value: JSON
+    +updated_at: datetime
+  }
+}
+
+' ===== Views/Controllers =====
+package "Django Views" {
+  class AttackerDashboardView {
+    +attacker_dashboard(request)
+    +get_context_data()
+  }
+
+  class AttackAPIView {
+    +arp_attack_start(request)
+    +arp_attack_stop(request)
+    +syn_attack_start(request)
+    +syn_attack_stop(request)
+    +get_attack_stats(request)
+  }
+
+  class ScannerAPIView {
+    +start_scan(request)
+    +get_scan_results(request, scan_id)
+  }
+
+  class SnifferAPIView {
+    +start_sniffer(request)
+    +stop_sniffer(request)
+    +get_packets(request, sniffer_id)
+  }
+
+  class NetworkInfoAPIView {
+    +get_network_info(request)
+  }
+}
+
+' ===== Attack Modules =====
+package "Attack Modules" {
+  class ARPSpoofer {
+    -victim_ip: string
+    -gateway_ip: string
+    -interface: string
+    -interval: float
+    -running: boolean
+    -thread: Thread
+    -packets_sent: int
+    --
+    +start()
+    +stop()
+    +restore_arp()
+    +get_mac(ip): string
+    -spoof_loop()
+  }
+
+  class SYNFlooder {
+    -target_ip: string
+    -target_port: int
+    -num_threads: int
+    -duration: int
+    -running: boolean
+    -threads: list
+    -packets_sent: int
+    --
+    +start()
+    +stop()
+    -flood_thread()
+    -create_syn_packet()
+  }
+
+  class NetworkScanner {
+    -network_range: string
+    -full_scan: boolean
+    -discovered_hosts: list
+    -scan_id: string
+    -status: string
+    --
+    +start_scan()
+    +get_results(): dict
+    -arp_sweep()
+    -port_scan(ip)
+  }
+
+  class TrafficSniffer {
+    -interface: string
+    -bpf_filter: string
+    -sniffer_id: string
+    -running: boolean
+    -packets: list
+    -thread: Thread
+    --
+    +start()
+    +stop()
+    +get_packets(): list
+    +get_stats(): dict
+    -packet_callback(packet)
+  }
+
+  class Detector {
+    -detection_rules: list
+    -alert_threshold: int
+    --
+    +analyze_traffic(packets)
+    +detect_arp_spoof(packet): boolean
+    +detect_syn_flood(packet): boolean
+    +log_alert(alert_type, details)
+  }
+}
+
+' ===== Utilities =====
+package "Utilities" {
+  class NetworkUtils {
+    {static} +get_local_ip(): string
+    {static} +get_gateway_ip(): string
+    {static} +get_mac_address(ip): string
+    {static} +is_valid_ip(ip): boolean
+  }
+
+  class Logger {
+    {static} +log_attack(details)
+    {static} +log_detection(details)
+    {static} +log_error(message)
+  }
+}
+
+' ===== Relationships =====
+User "1" -- "0..*" AttackLog : creates >
+User --> UserRole : has
+
+AttackerDashboardView --> User : authenticates
+AttackAPIView --> User : validates
+AttackAPIView --> AttackLog : creates >
+AttackAPIView --> ARPSpoofer : controls >
+AttackAPIView --> SYNFlooder : controls >
+
+ScannerAPIView --> NetworkScanner : manages >
+SnifferAPIView --> TrafficSniffer : manages >
+NetworkInfoAPIView --> NetworkUtils : uses >
+
+ARPSpoofer --> NetworkUtils : uses >
+SYNFlooder --> NetworkUtils : uses >
+NetworkScanner --> NetworkUtils : uses >
+TrafficSniffer --> Detector : feeds packets >
+
+Detector --> DetectionLog : creates >
+Detector --> Configuration : reads rules >
+
+Logger --> AttackLog : writes >
+Logger --> DetectionLog : writes >
+
+@enduml
