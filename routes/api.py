@@ -217,7 +217,7 @@ def stop_sniffer():
 
 
 # ============================================================================
-# SYSTEM INFO ENDPOINT (with Shield CPU)
+# SYSTEM INFO ENDPOINT
 # ============================================================================
 
 @api_bp.route('/network/info', methods=['GET'])

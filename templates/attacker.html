@@ -114,26 +114,6 @@
             <p><strong>Local IP:</strong> <span id="info-local-ip">{{ local_ip }}</span></p>
             <p><strong>Gateway IP:</strong> <span id="info-gateway-ip">{{ gateway_ip }}</span></p>
         </div>
-        
-        <!-- Shield CPU Card -->
-        <div class="card shield-cpu-card">
-            <h3>🛡️ Shield CPU</h3>
-            <div style="display: flex; gap: 2rem;">
-                <div style="flex: 1;">
-                    <p><strong>CPU Usage:</strong> <span id="shield-cpu-usage">0%</span></p>
-                    <div class="cpu-bar">
-                        <div id="shield-cpu-bar" class="cpu-bar-fill"></div>
-                    </div>
-                </div>
-                <div style="flex: 1;">
-                    <p><strong>RAM Usage:</strong> <span id="shield-ram-usage">0%</span></p>
-                    <div class="ram-bar">
-                        <div id="shield-ram-bar" class="ram-bar-fill"></div>
-                    </div>
-                </div>
-            </div>
-            <p id="shield-status" style="margin-top: 1rem; font-weight: bold;">✅ System Status: Healthy</p>
-        </div>
     </div>
 </div>
 
@@ -264,7 +244,6 @@
         border-radius: 4px;
         border-left: 4px solid #f5c6cb;
     }
-    
     /* Shield CPU Styles */
     .shield-cpu-card {
         background: linear-gradient(135deg, #f0f8ff 0%, #e6f2ff 100%);
@@ -626,35 +605,6 @@
         const elem = document.getElementById(elementId);
         elem.className = 'status-' + type;
         elem.innerHTML = message;
-    }
-    
-    // Refresh system info (Shield CPU)
-    async function refreshSystemInfo() {
-        try {
-            const res = await fetch('/api/network/info');
-            const data = await res.json();
-            
-            const cpuUsage = data.cpu_usage;
-            const ramUsage = data.ram_usage;
-            
-            document.getElementById('shield-cpu-usage').textContent = cpuUsage.toFixed(1) + '%';
-            document.getElementById('shield-cpu-bar').style.width = cpuUsage + '%';
-            
-            document.getElementById('shield-ram-usage').textContent = ramUsage.toFixed(1) + '%';
-            document.getElementById('shield-ram-bar').style.width = ramUsage + '%';
-            
-            // Update status
-            const statusElem = document.getElementById('shield-status');
-            if (cpuUsage > 90 || ramUsage > 95) {
-                statusElem.innerHTML = '🚨 System Status: <span style="color: #f44336;">CRITICAL</span>';
-            } else if (cpuUsage > 80 || ramUsage > 85) {
-                statusElem.innerHTML = '⚠️ System Status: <span style="color: #ff9800;">WARNING</span>';
-            } else {
-                statusElem.innerHTML = '✅ System Status: <span style="color: #4CAF50;">HEALTHY</span>';
-            }
-        } catch (e) {
-            console.error('System info error:', e);
-        }
     }
     
     // Refresh system info every 2 seconds
