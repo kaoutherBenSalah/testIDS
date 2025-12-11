@@ -65,7 +65,8 @@ def start_arp_attack():
         # Start in background thread
         def run_attack():
             try:
-                spoofer.start(interval=interval)
+                # Use ARPSpoofer.start_attack (per module API) instead of non-existent start
+                spoofer.start_attack(interval=interval)
             except Exception as e:
                 print(f"ARP Attack Error: {e}")
         
@@ -110,7 +111,8 @@ def stop_arp_attack():
         spoofer = attack_info['object']
         
         # Stop attack
-        spoofer.stop()
+        # Use ARPSpoofer.stop_attack to restore ARP tables properly
+        spoofer.stop_attack()
         
         # Remove from active attacks
         del active_attacks[attack_id]

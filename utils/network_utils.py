@@ -6,6 +6,7 @@ Fonctions communes pour la manipulation réseau
 import socket
 import struct
 import re
+import os  # needed for enable/disable_ip_forwarding
 from scapy.all import *
 
 
