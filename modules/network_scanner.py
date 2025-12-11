@@ -26,10 +26,9 @@ from utils.logger import get_logger
 class Host:
     """Represents a discovered network host"""
     
-    def __init__(self, ip, mac='Unknown', hostname='Unknown'):
+    def __init__(self, ip, mac='Unknown'):
         self.ip = ip
         self.mac = mac
-        self.hostname = hostname
         self.open_ports = []
         self.is_active = True
         self.os_guess = 'Unknown'
@@ -39,7 +38,6 @@ class Host:
         return {
             'ip': self.ip,
             'mac': self.mac,
-            'hostname': self.hostname,
             'open_ports': self.open_ports,
             'is_active': self.is_active,
             'os_guess': self.os_guess
@@ -108,13 +106,10 @@ class NetworkScanner:
                 ip = received.psrc
                 mac = received.hwsrc
                 
-                # Try to resolve hostname
-                hostname = self._resolve_hostname(ip)
-                
-                host = Host(ip=ip, mac=mac, hostname=hostname)
+                host = Host(ip=ip, mac=mac)
                 self.discovered_hosts.append(host)
                 
-                self.logger.info(f"  ✅ Found: {ip} ({mac}) - {hostname}")
+                self.logger.info(f"  ✅ Found: {ip} ({mac})")
             
             self.logger.info(f"📊 Scan complete. Found {len(self.discovered_hosts)} hosts.")
             return self.discovered_hosts
@@ -270,37 +265,21 @@ class NetworkScanner:
             self.logger.info("No hosts discovered yet.")
             return
         
-        print("\n" + "="*80)
+        print("\n" + "="*90)
         print("NETWORK SCAN RESULTS")
-        print("="*80)
-        print(f"{'IP Address':<18} {'MAC Address':<20} {'Hostname':<25} {'Open Ports'}")
-        print("-"*80)
+        print("="*90)
+        print(f"{'IP Address':<18} {'MAC Address':<20} {'Open Ports'}")
+        print("-"*90)
         
         for host in self.discovered_hosts:
-            ports_str = ','.join(map(str, host.open_ports[:5]))  # Show first 5 ports
-            if len(host.open_ports) > 5:
+            ports_str = ','.join(map(str, host.open_ports[:10]))  # Show first 10 ports
+            if len(host.open_ports) > 10:
                 ports_str += '...'
             
-            print(f"{host.ip:<18} {host.mac:<20} {host.hostname:<25} {ports_str}")
+            print(f"{host.ip:<18} {host.mac:<20} {ports_str}")
         
-        print("="*80)
+        print("="*90)
         print(f"Total: {len(self.discovered_hosts)} hosts discovered\n")
-    
-    def _resolve_hostname(self, ip_address):
-        """
-        Resolve hostname from IP address
-        
-        Args:
-            ip_address (str): IP address
-        
-        Returns:
-            str: Hostname or 'Unknown'
-        """
-        try:
-            hostname = socket.gethostbyaddr(ip_address)[0]
-            return hostname
-        except:
-            return 'Unknown'
     
     def _guess_os(self, open_ports):
         """

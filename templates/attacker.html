@@ -507,13 +507,14 @@
                 let html = '<h3>📊 Scan Results</h3>';
                 if (resultsData.hosts.length > 0) {
                     html += '<table style="width: 100%; border-collapse: collapse;">';
-                    html += '<tr><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">IP</th><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">MAC</th><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">Hostname</th></tr>';
+                    html += '<tr><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">IP</th><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">MAC</th><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">Open Ports</th></tr>';
                     
                     for (const host of resultsData.hosts) {
+                        const ports = host.open_ports.length > 0 ? host.open_ports.join(', ') : 'None';
                         html += `<tr>
                             <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">${host.ip}</td>
                             <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">${host.mac || 'N/A'}</td>
-                            <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">${host.hostname || 'Unknown'}</td>
+                            <td style="padding: 0.5rem; border-bottom: 1px solid #eee; font-family: monospace; font-size: 0.9rem;">${ports}</td>
                         </tr>`;
                     }
                     html += '</table>';
