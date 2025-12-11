@@ -1,5 +1,5 @@
 """
-testIDS - Flask Version
+IDS - Flask Version
 Educational Cybersecurity Platform with ARP Spoofing & SYN Flood
 
 Run: python app.py
@@ -97,7 +97,7 @@ def dashboard():
 @app.route('/attacker')
 def attacker_dashboard():
     """Attacker interface"""
-    if 'user_id' not in session or session.get('user_role') not in ['ATTACKER', 'ADMIN']:
+    if 'user_id' not in session or session.get('user_role') != 'ATTACKER':
         return redirect(url_for('login'))
     
     return render_template(
@@ -111,7 +111,7 @@ def attacker_dashboard():
 @app.route('/defender')
 def defender_dashboard():
     """Defender interface (placeholder)"""
-    if 'user_id' not in session or session.get('user_role') not in ['DEFENDER', 'ADMIN']:
+    if 'user_id' not in session or session.get('user_role') != 'DEFENDER':
         return redirect(url_for('login'))
     
     return render_template(
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     os.makedirs('static/js', exist_ok=True)
     
     print("=" * 60)
-    print("🔐 testIDS - Flask Version")
+    print("🔐 IDS - Flask Version")
     print("=" * 60)
     print(f"📍 Local IP: {get_local_ip()}")
     print(f"🔌 Gateway: {get_gateway_ip()}")
@@ -175,7 +175,6 @@ if __name__ == '__main__':
     print("👤 Default Users:")
     print("   - attacker / attack123 (ATTACKER)")
     print("   - defender / defend123 (DEFENDER)")
-    print("   - admin / admin123 (ADMIN)")
     print()
     print("🚀 Running on: http://localhost:5000")
     print("=" * 60)

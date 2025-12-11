@@ -29,7 +29,7 @@ def require_attacker(f):
     """Decorator to require attacker role"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if session.get('user_role') not in ['ATTACKER', 'ADMIN']:
+        if session.get('user_role') != 'ATTACKER':
             return jsonify({'error': 'Access denied'}), 403
         return f(*args, **kwargs)
     return decorated_function

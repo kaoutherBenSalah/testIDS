@@ -33,11 +33,11 @@ class User:
     
     def is_attacker(self):
         """Check if user can launch attacks"""
-        return self.role in ['ATTACKER', 'ADMIN']
+        return self.role == 'ATTACKER'
     
     def is_defender(self):
         """Check if user can view detections"""
-        return self.role in ['DEFENDER', 'ADMIN']
+        return self.role == 'DEFENDER'
     
     def __repr__(self):
         return f'<User {self.username} ({self.role})>'
@@ -77,7 +77,6 @@ def create_default_users():
     defaults = {
         'attacker': {'password': generate_password_hash('attack123'), 'role': 'ATTACKER'},
         'defender': {'password': generate_password_hash('defend123'), 'role': 'DEFENDER'},
-        'admin': {'password': generate_password_hash('admin123'), 'role': 'ADMIN'},
     }
     
     for username, data in defaults.items():
