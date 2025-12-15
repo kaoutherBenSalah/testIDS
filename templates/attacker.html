@@ -492,12 +492,33 @@
         
         html += '<div style="font-family: monospace; font-size: 0.9rem;">';
         hosts.forEach(host => {
-            const hostname = host.hostname ? `<strong style="color: #00ff88;">${host.hostname}</strong>` : '<span style="color: #888;">unknown</span>';
+            // Generate a better label when hostname is missing
+            let hostnameDisplay;
+            if (host.hostname) {
+                hostnameDisplay = `<strong style="color: #00ff88;">${host.hostname}</strong>`;
+            } else {
+                // Try to infer device type from open ports/services
+                let deviceHint = 'Host';
+                if (host.services && host.services.length > 0) {
+                    const services = host.services.map(s => s.service.toLowerCase()).join(',');
+                    if (services.includes('http') || services.includes('apache') || services.includes('nginx')) {
+                        deviceHint = 'Web Server';
+                    } else if (services.includes('ssh')) {
+                        deviceHint = 'SSH Server';
+                    } else if (services.includes('smb') || services.includes('netbios')) {
+                        deviceHint = 'Windows Host';
+                    } else if (services.includes('mysql') || services.includes('postgres')) {
+                        deviceHint = 'Database Server';
+                    }
+                }
+                hostnameDisplay = `<span style="color: #f80; font-style: italic;">${deviceHint}</span> <span style="color: #666; font-size: 0.8rem;">(hostname not resolved)</span>`;
+            }
+            
             const ip = `<span style="color: #4af;">${host.ip}</span>`;
             const mac = `<span style="color: #fa4;">${host.mac}</span>`;
             
             html += `<div style="border-bottom: 1px solid #333; padding: 0.75rem 0; margin-bottom: 0.5rem;">`;
-            html += `<div style="margin-bottom: 0.3rem;">${hostname} | ${ip} | ${mac}</div>`;
+            html += `<div style="margin-bottom: 0.3rem;">${hostnameDisplay} | ${ip} | ${mac}</div>`;
             
             if (host.open_ports && host.open_ports.length > 0) {
                 html += `<div style="color: #aaa; margin-left: 1rem;">📡 Ports: <span style="color: #0f0;">${host.open_ports.join(', ')}</span></div>`;
@@ -524,8 +545,15 @@
         [victimSelect, gwSelect, synSelect].forEach(sel => { if (sel) sel.innerHTML = ''; });
 
         scannedHosts.forEach(h => {
-            const label = `${h.hostname || 'host'} | ${h.ip} | ${h.mac}`;
+            // Create better label for dropdown
+            let displayName = h.hostname || h.ip;
+            if (!h.hostname && h.services && h.services.length > 0) {
+                const svc = h.services[0].service;
+                displayName = `[${svc}] ${h.ip}`;
+            }
+            const label = `${displayName} | ${h.mac}`;
             const value = `${h.ip}|${h.mac}`;
+            
             if (victimSelect) {
                 const o = document.createElement('option'); o.value = value; o.textContent = label; victimSelect.appendChild(o);
             }

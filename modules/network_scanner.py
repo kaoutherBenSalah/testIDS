@@ -207,8 +207,13 @@ class NetworkScanner:
                 break
             self.logger.info(f"Gathering info for {host.ip}...")
             
-            # Hostname resolution
+            # Hostname resolution (try multiple times for better results)
             host.hostname = self._resolve_hostname(host.ip)
+            if not host.hostname:
+                # Retry with a small delay for DHCP/DNS propagation
+                import time
+                time.sleep(0.2)
+                host.hostname = self._resolve_hostname(host.ip)
 
             # Scan common ports
             host.open_ports = self.scan_ports(host.ip)
@@ -333,55 +338,119 @@ class NetworkScanner:
             return 'Unknown'
 
     def _resolve_hostname(self, ip_address: str) -> Optional[str]:
-        """Multi-method hostname resolution: /etc/hosts, NetBIOS, mDNS, reverse DNS."""
-        # Try /etc/hosts first (works on Linux/Unix)
+        """Multi-method hostname resolution with comprehensive fallbacks."""
+        
+        # Method 1: Check hosts file (Windows: C:\Windows\System32\drivers\etc\hosts, Linux: /etc/hosts)
+        import platform
+        hosts_file = r'C:\Windows\System32\drivers\etc\hosts' if platform.system() == 'Windows' else '/etc/hosts'
         try:
-            with open('/etc/hosts', 'r') as f:
+            with open(hosts_file, 'r', encoding='utf-8', errors='ignore') as f:
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith('#'):
                         parts = line.split()
                         if len(parts) >= 2 and parts[0] == ip_address:
-                            return parts[1].split('.')[0]
-        except Exception:
-            pass
+                            hostname = parts[1].split('.')[0]
+                            self.logger.info(f"Resolved {ip_address} -> {hostname} (hosts file)")
+                            return hostname
+        except Exception as e:
+            self.logger.debug(f"Hosts file lookup failed: {e}")
         
-        # Try nmblookup (NetBIOS) for Windows names
-        try:
-            result = subprocess.run(
-                ["nmblookup", "-A", ip_address], capture_output=True, text=True, timeout=2
-            )
-            if result.returncode == 0:
-                for line in result.stdout.splitlines():
-                    if "<00>" in line and "GROUP" not in line:
-                        parts = line.split()
-                        if parts:
-                            return parts[0].strip()
-        except Exception:
-            pass
-        
-        # Try nmap NSE script for hostname
-        try:
-            result = subprocess.run(
-                ["nmap", "-sn", "-PR", ip_address], capture_output=True, text=True, timeout=3
-            )
-            if result.returncode == 0:
-                for line in result.stdout.splitlines():
-                    if "Nmap scan report for" in line and "(" in line:
-                        hostname = line.split("for")[1].split("(")[0].strip()
-                        if hostname and hostname != ip_address:
-                            return hostname.split('.')[0]
-        except Exception:
-            pass
-        
-        # Fallback to reverse DNS
+        # Method 2: Reverse DNS (most reliable when configured)
         try:
             hostname, _, _ = socket.gethostbyaddr(ip_address)
             if hostname and hostname != ip_address:
-                return hostname.split('.')[0]
-        except Exception:
-            pass
+                short_name = hostname.split('.')[0]
+                self.logger.info(f"Resolved {ip_address} -> {short_name} (reverse DNS)")
+                return short_name
+        except Exception as e:
+            self.logger.debug(f"Reverse DNS failed for {ip_address}: {e}")
         
+        # Method 3: NetBIOS lookup (Windows networks)
+        try:
+            result = subprocess.run(
+                ["nmblookup", "-A", ip_address], 
+                capture_output=True, text=True, timeout=2, stderr=subprocess.DEVNULL
+            )
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    if "<00>" in line and "GROUP" not in line and "<ACTIVE>" in line:
+                        parts = line.split()
+                        if parts and parts[0]:
+                            hostname = parts[0].strip()
+                            self.logger.info(f"Resolved {ip_address} -> {hostname} (NetBIOS)")
+                            return hostname
+        except Exception as e:
+            self.logger.debug(f"NetBIOS lookup failed: {e}")
+        
+        # Method 4: nmap hostname detection (when nmap is available)
+        try:
+            result = subprocess.run(
+                ["nmap", "-sn", "-n", "--system-dns", ip_address],
+                capture_output=True, text=True, timeout=3, stderr=subprocess.DEVNULL
+            )
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    if "Nmap scan report for" in line:
+                        parts = line.split("for")[1].strip()
+                        if parts and "(" in parts:
+                            hostname = parts.split("(")[0].strip()
+                            if hostname and hostname != ip_address:
+                                short_name = hostname.split('.')[0]
+                                self.logger.info(f"Resolved {ip_address} -> {short_name} (nmap)")
+                                return short_name
+        except Exception as e:
+            self.logger.debug(f"nmap hostname lookup failed: {e}")
+        
+        # Method 5: getent hosts (Linux)
+        try:
+            result = subprocess.run(
+                ["getent", "hosts", ip_address],
+                capture_output=True, text=True, timeout=1, stderr=subprocess.DEVNULL
+            )
+            if result.returncode == 0 and result.stdout:
+                parts = result.stdout.strip().split()
+                if len(parts) >= 2:
+                    hostname = parts[1].split('.')[0]
+                    self.logger.info(f"Resolved {ip_address} -> {hostname} (getent)")
+                    return hostname
+        except Exception as e:
+            self.logger.debug(f"getent lookup failed: {e}")
+        
+        # Method 6: ARP cache check with hostname (Linux)
+        try:
+            result = subprocess.run(
+                ["arp", "-a"], 
+                capture_output=True, text=True, timeout=1, stderr=subprocess.DEVNULL
+            )
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    if ip_address in line:
+                        # Format: hostname (192.168.1.100) at aa:bb:cc:dd:ee:ff [ether] on eth0
+                        match = line.split('(')[0].strip()
+                        if match and not match.startswith('?') and match != ip_address:
+                            hostname = match.split('.')[0]
+                            self.logger.info(f"Resolved {ip_address} -> {hostname} (ARP cache)")
+                            return hostname
+        except Exception as e:
+            self.logger.debug(f"ARP cache lookup failed: {e}")
+        
+        # Method 7: Try mDNS/Avahi (for .local domains)
+        try:
+            result = subprocess.run(
+                ["avahi-resolve", "-a", ip_address],
+                capture_output=True, text=True, timeout=2, stderr=subprocess.DEVNULL
+            )
+            if result.returncode == 0 and result.stdout:
+                parts = result.stdout.strip().split()
+                if len(parts) >= 2:
+                    hostname = parts[1].replace('.local', '').split('.')[0]
+                    self.logger.info(f"Resolved {ip_address} -> {hostname} (mDNS)")
+                    return hostname
+        except Exception as e:
+            self.logger.debug(f"mDNS lookup failed: {e}")
+        
+        self.logger.warning(f"Could not resolve hostname for {ip_address}")
         return None
 
     def _detect_services(self, ip_address: str, ports: List[int]) -> List[Dict[str, str]]:
