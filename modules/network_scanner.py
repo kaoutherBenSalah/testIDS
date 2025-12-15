@@ -114,6 +114,14 @@ class NetworkScanner:
                 ip = received.psrc
                 mac = received.hwsrc
                 
+                # Skip broadcast/multicast addresses
+                try:
+                    ip_obj = ipaddress.ip_address(ip)
+                    if ip_obj.is_multicast or str(ip).endswith('.255'):
+                        continue
+                except Exception:
+                    pass
+                
                 host = Host(ip=ip, mac=mac)
                 self.discovered_hosts.append(host)
                 
@@ -325,13 +333,8 @@ class NetworkScanner:
             return 'Unknown'
 
     def _resolve_hostname(self, ip_address: str) -> Optional[str]:
-        """Reverse DNS + NetBIOS/mDNS best-effort resolution."""
-        try:
-            hostname, _, _ = socket.gethostbyaddr(ip_address)
-            return hostname
-        except Exception:
-            pass
-        # Try nmblookup (NetBIOS) if available
+        """NetBIOS/mDNS + Reverse DNS best-effort resolution."""
+        # Try nmblookup (NetBIOS) first for Windows names
         try:
             result = subprocess.run(
                 ["nmblookup", "-A", ip_address], capture_output=True, text=True, timeout=2
@@ -339,7 +342,16 @@ class NetworkScanner:
             if result.returncode == 0:
                 for line in result.stdout.splitlines():
                     if "<00>" in line and "GROUP" not in line:
-                        return line.split()[0]
+                        parts = line.split()
+                        if parts:
+                            return parts[0].strip()
+        except Exception:
+            pass
+        # Fallback to reverse DNS
+        try:
+            hostname, _, _ = socket.gethostbyaddr(ip_address)
+            if hostname and hostname != ip_address:
+                return hostname.split('.')[0]  # Return short name
         except Exception:
             pass
         return None
@@ -375,11 +387,13 @@ class NetworkScanner:
             elif service_hint == 'ftp' or port == 21:
                 sock.sendall(b"QUIT\r\n")
 
-            data = sock.recv(512)
+            data = sock.recv(1024)
             sock.close()
             if not data:
                 return None
-            return data.decode(errors='ignore').strip().replace('\r', '').replace('\n', ' ')[:200]
+            # Clean and limit banner text
+            banner = data.decode(errors='ignore').strip().replace('\r', '').replace('\n', ' ')
+            return banner[:300] if len(banner) > 300 else banner
         except Exception:
             # Try minimal TLS client hello for 443 to extract SNI/cert CN
             if port == 443:

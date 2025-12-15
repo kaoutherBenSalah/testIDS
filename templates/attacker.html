@@ -18,6 +18,30 @@
 
     <div id="attacks-tab" class="tab-content active">
         <h2>🎯 Attack Modules</h2>
+
+        <div class="card">
+            <h3>🔍 Network Scanner</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Interface</label>
+                    <select id="scan-interface"></select>
+                </div>
+                <div class="form-group">
+                    <label>Range (CIDR)</label>
+                    <input type="text" id="scan-range" placeholder="auto" />
+                </div>
+                <div class="form-group">
+                    <label>Full scan (all ports)</label>
+                    <input type="checkbox" id="full-scan" />
+                </div>
+            </div>
+            <div class="button-row">
+                <button class="btn" onclick="startScan()">Start Scan</button>
+                <button class="btn btn-danger" id="scan-stop-btn" onclick="stopScan()" disabled>Stop Scan</button>
+            </div>
+            <div id="scan-results" class="list" style="max-height: 300px; overflow-y: auto;"></div>
+        </div>
+        
         <div class="card">
             <h3>🎭 ARP Spoofing (Man-in-the-Middle)</h3>
             <div class="form-grid">
@@ -83,27 +107,9 @@
     </div>
 
     <div id="scanner-tab" class="tab-content">
-        <h2>🔍 Network Scanner</h2>
+        <h2>🔍 Network Scanner (Detailed View)</h2>
         <div class="card">
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Interface</label>
-                    <select id="scan-interface"></select>
-                </div>
-                <div class="form-group">
-                    <label>Range (CIDR)</label>
-                    <input type="text" id="scan-range" placeholder="auto" />
-                </div>
-                <div class="form-group">
-                    <label>Full scan (all ports)</label>
-                    <input type="checkbox" id="full-scan" />
-                </div>
-            </div>
-            <div class="button-row">
-                <button class="btn" onclick="startScan()">Start Scan</button>
-                <button class="btn btn-danger" id="scan-stop-btn" onclick="stopScan()" disabled>Stop Scan</button>
-            </div>
-            <div id="scan-results" class="list"></div>
+            <p>Full results with extended information - same controls as in Attacks tab.</p>
         </div>
     </div>
 
@@ -132,7 +138,7 @@
                 <button class="btn" onclick="startSniffer()">Start Sniffer</button>
                 <button class="btn btn-danger" id="sniffer-stop-btn" onclick="stopSniffer()" disabled>Stop Sniffer</button>
             </div>
-            <div id="packet-list" class="list"></div>
+            <div id="packet-list" style="background: #0a0e27; color: #00ff41; font-family: 'Courier New', monospace; padding: 1rem; border-radius: 4px; max-height: 500px; overflow-y: auto; font-size: 0.85rem; line-height: 1.4;"></div>
         </div>
     </div>
 
@@ -428,17 +434,29 @@
             return;
         }
 
-        let html = '';
+        let html = '<div style="font-family: monospace; font-size: 0.9rem;">';
         hosts.forEach(host => {
-            const title = `${host.hostname || 'unknown'} | ${host.ip} | ${host.mac}`;
-            const services = (host.services || []).map(s => `${s.port}:${s.service}${s.banner ? ' (' + s.banner + ')' : ''}`).join(', ');
-            html += `
-            <div class="host-item">
-                <h4>${title}</h4>
-                <p>Open Ports: ${host.open_ports && host.open_ports.length > 0 ? host.open_ports.join(', ') : 'None'}</p>
-                <p>Services: ${services || 'n/a'}</p>
-            </div>`;
+            const hostname = host.hostname ? `<strong style="color: #00ff88;">${host.hostname}</strong>` : '<span style="color: #888;">unknown</span>';
+            const ip = `<span style="color: #4af;">${host.ip}</span>`;
+            const mac = `<span style="color: #fa4;">${host.mac}</span>`;
+            
+            html += `<div style="border-bottom: 1px solid #333; padding: 0.75rem 0; margin-bottom: 0.5rem;">`;
+            html += `<div style="margin-bottom: 0.3rem;">${hostname} | ${ip} | ${mac}</div>`;
+            
+            if (host.open_ports && host.open_ports.length > 0) {
+                html += `<div style="color: #aaa; margin-left: 1rem;">📡 Ports: <span style="color: #0f0;">${host.open_ports.join(', ')}</span></div>`;
+            }
+            
+            if (host.services && host.services.length > 0) {
+                host.services.forEach(svc => {
+                    const banner = svc.banner ? `<span style="color: #888; font-size: 0.85rem;"> — ${svc.banner}</span>` : '';
+                    html += `<div style="color: #aaa; margin-left: 1rem;">  🔹 ${svc.port}/${svc.service}${banner}</div>`;
+                });
+            }
+            
+            html += `</div>`;
         });
+        html += '</div>';
 
         document.getElementById('scan-results').innerHTML = html;
     }
@@ -499,13 +517,28 @@
             const data = await res.json();
             const packets = data.packets || [];
             let html = '';
-            packets.forEach(pkt => {
-                html += `<div class="packet">
-                    <div class="packet-header">${pkt.timestamp} | ${pkt.protocol} | ${pkt.src} → ${pkt.dst}</div>
-                    <div class="packet-body">${pkt.info}</div>
-                </div>`;
+            
+            // Terminal-style output with timestamps
+            packets.slice(-50).forEach(pkt => {
+                const time = pkt.timestamp || new Date().toLocaleTimeString();
+                const proto = pkt.protocol.toUpperCase().padEnd(6);
+                const arrow = '→';
+                html += `<div style="margin-bottom: 0.2rem;">`;
+                html += `<span style="color: #666;">[${time}]</span> `;
+                html += `<span style="color: #0ff;">${proto}</span> `;
+                html += `<span style="color: #f80;">${pkt.src}</span> `;
+                html += `<span style="color: #666;">${arrow}</span> `;
+                html += `<span style="color: #0f0;">${pkt.dst}</span>`;
+                if (pkt.info) {
+                    html += ` <span style="color: #aaa;">| ${pkt.info}</span>`;
+                }
+                html += `</div>`;
             });
-            document.getElementById('packet-list').innerHTML = html || '<p>No packets yet...</p>';
+            
+            const listEl = document.getElementById('packet-list');
+            listEl.innerHTML = html || '<span style="color: #666;">Waiting for packets...</span>';
+            // Auto-scroll to bottom for latest packets
+            listEl.scrollTop = listEl.scrollHeight;
         } catch (e) {
             console.error('Sniffer poll error', e);
         }
