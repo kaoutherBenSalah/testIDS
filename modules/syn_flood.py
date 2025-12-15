@@ -309,7 +309,7 @@ Cette attaque peut rendre un serveur inaccessible.
     parser.add_argument('--rate', type=int, default=None,
                        help='Limite de paquets/s par thread (défaut: illimité)')
     parser.add_argument('--test', action='store_true',
-                        help='Tester le premier couple IP/port avant l'attaque')
+                        help='Tester le premier couple IP/port avant l\'attaque')
     
     args = parser.parse_args()
 
