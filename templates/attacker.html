@@ -494,24 +494,58 @@
         hosts.forEach(host => {
             // Generate a better label when hostname is missing
             let hostnameDisplay;
-            if (host.hostname) {
+            if (host.hostname && host.hostname !== 'unknown') {
                 hostnameDisplay = `<strong style="color: #00ff88;">${host.hostname}</strong>`;
             } else {
                 // Try to infer device type from open ports/services
-                let deviceHint = 'Host';
+                let deviceHint = 'Unknown Host';
+                let hintColor = '#666';
+                
                 if (host.services && host.services.length > 0) {
-                    const services = host.services.map(s => s.service.toLowerCase()).join(',');
+                    const services = host.services.map(s => s.service ? s.service.toLowerCase() : '').join(',');
                     if (services.includes('http') || services.includes('apache') || services.includes('nginx')) {
-                        deviceHint = 'Web Server';
+                        deviceHint = '🌐 Web Server';
+                        hintColor = '#0cf';
                     } else if (services.includes('ssh')) {
-                        deviceHint = 'SSH Server';
+                        deviceHint = '💻 SSH Server';
+                        hintColor = '#0f8';
                     } else if (services.includes('smb') || services.includes('netbios')) {
-                        deviceHint = 'Windows Host';
+                        deviceHint = '🪟 Windows Host';
+                        hintColor = '#08f';
                     } else if (services.includes('mysql') || services.includes('postgres')) {
-                        deviceHint = 'Database Server';
+                        deviceHint = '🗄️ Database Server';
+                        hintColor = '#f80';
+                    } else if (services.includes('ftp')) {
+                        deviceHint = '📁 FTP Server';
+                        hintColor = '#fa0';
+                    } else if (services.includes('dns')) {
+                        deviceHint = '🌍 DNS Server';
+                        hintColor = '#0af';
+                    } else {
+                        deviceHint = `💾 ${services.split(',')[0].toUpperCase()} Host`;
+                        hintColor = '#f80';
+                    }
+                } else if (host.open_ports && host.open_ports.length > 0) {
+                    const port = host.open_ports[0];
+                    if (port === 80 || port === 443 || port === 8080) {
+                        deviceHint = '🌐 Web Server';
+                        hintColor = '#0cf';
+                    } else if (port === 22) {
+                        deviceHint = '💻 SSH Server';
+                        hintColor = '#0f8';
+                    } else if (port === 445 || port === 139) {
+                        deviceHint = '🪟 Windows Host';
+                        hintColor = '#08f';
+                    } else if (port === 3306 || port === 5432) {
+                        deviceHint = '🗄️ Database';
+                        hintColor = '#f80';
+                    } else {
+                        deviceHint = `🖥️ Host:${port}`;
+                        hintColor = '#888';
                     }
                 }
-                hostnameDisplay = `<span style="color: #f80; font-style: italic;">${deviceHint}</span> <span style="color: #666; font-size: 0.8rem;">(hostname not resolved)</span>`;
+                
+                hostnameDisplay = `<span style="color: ${hintColor}; font-weight: bold;">${deviceHint}</span> <span style="color: #555; font-size: 0.75rem;">[no hostname]</span>`;
             }
             
             const ip = `<span style="color: #4af;">${host.ip}</span>`;

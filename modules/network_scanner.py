@@ -205,15 +205,22 @@ class NetworkScanner:
             if self.stop_requested:
                 self.logger.info("🛑 Full scan aborted")
                 break
-            self.logger.info(f"Gathering info for {host.ip}...")
+            self.logger.info(f"🔍 Gathering info for {host.ip}...")
             
             # Hostname resolution (try multiple times for better results)
+            self.logger.info(f"🔎 Resolving hostname for {host.ip}...")
             host.hostname = self._resolve_hostname(host.ip)
             if not host.hostname:
+                self.logger.info(f"⚠️  First attempt failed, retrying {host.ip}...")
                 # Retry with a small delay for DHCP/DNS propagation
                 import time
                 time.sleep(0.2)
                 host.hostname = self._resolve_hostname(host.ip)
+            
+            if host.hostname:
+                self.logger.info(f"✅ Resolved {host.ip} -> {host.hostname}")
+            else:
+                self.logger.warning(f"❌ Could not resolve hostname for {host.ip}")
 
             # Scan common ports
             host.open_ports = self.scan_ports(host.ip)
