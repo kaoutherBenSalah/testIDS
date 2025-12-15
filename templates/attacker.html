@@ -204,12 +204,14 @@
         const interval = document.getElementById('arp-interval').value;
 
         if (!victimOpt || !gwOpt) {
-            alert('Select victim and gateway');
+            alert('Select victim and gateway from scan results first!');
             return;
         }
 
         const victimIP = victimOpt.split('|')[0];
         const gatewayIP = gwOpt.split('|')[0];
+
+        showStatus('arp-status', '🚀 Starting ARP spoofing attack...', 'info');
 
         try {
             const res = await fetch('/api/attack/arp/start', {
@@ -227,7 +229,7 @@
 
             if (res.ok) {
                 currentARPAttackId = data.attack_id;
-                showStatus('arp-status', '✅ ' + data.message, 'success');
+                showStatus('arp-status', `✅ ATTACK RUNNING → Poisoning ${victimIP} <-> ${gatewayIP}`, 'success');
                 document.getElementById('arp-stop-btn').disabled = false;
                 refreshAttackStats();
                 setInterval(refreshAttackStats, 2000);
@@ -269,7 +271,7 @@
         const useSpoof = document.getElementById('syn-spoof').checked;
 
         if (!targetsSel.length) {
-            alert('Select at least one target');
+            alert('Select at least one target from scan results!');
             return;
         }
 
@@ -280,6 +282,9 @@
             rate_limit_pps: rate > 0 ? rate : null,
             spoof_ips: useSpoof ? scannedHosts.map(h => h.ip) : []
         };
+
+        const spoofMsg = useSpoof ? ` with ${scannedHosts.length} spoofed sources` : '';
+        showStatus('syn-status', `🚀 Launching SYN flood: ${targetsSel.length} target(s), ${ports.length} port(s), ${threads} threads${spoofMsg}...`, 'info');
 
         try {
             const res = await fetch('/api/attack/syn/start', {
@@ -292,7 +297,7 @@
 
             if (res.ok) {
                 currentSYNAttackId = data.attack_id;
-                showStatus('syn-status', '✅ ' + data.message, 'success');
+                showStatus('syn-status', `✅ ATTACK RUNNING → Flooding ${targetsSel.join(', ')} on ports ${ports.join(', ')}`, 'success');
                 document.getElementById('syn-stop-btn').disabled = false;
                 refreshAttackStats();
             } else {
@@ -329,20 +334,37 @@
             const res = await fetch('/api/attack/stats');
             const data = await res.json();
 
-            let html = '<table style="width: 100%; border-collapse: collapse;">';
-            html += '<tr><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">Type</th><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">Target</th><th style="padding: 0.5rem; border-bottom: 1px solid #ddd;">Status</th></tr>';
-
-            for (const [id, attack] of Object.entries(data.attacks)) {
-                html += `<tr>
-                    <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">${attack.type}</td>
-                    <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">${attack.target_ip}</td>
-                    <td style="padding: 0.5rem; border-bottom: 1px solid #eee;"><span style="color: #4CAF50;">●</span> ${attack.status}</td>
-                </tr>`;
-            }
-
-            html += '</table>';
+            let html = '';
+            
             if (Object.keys(data.attacks).length === 0) {
-                html = '<p style="color: #999;">No active attacks</p>';
+                html = '<div style="padding: 1rem; color: #888; text-align: center;">⏸️ No active attacks</div>';
+            } else {
+                html += '<div style="font-family: monospace;">';
+                for (const [id, attack] of Object.entries(data.attacks)) {
+                    const typeIcon = attack.type === 'ARP' ? '🎭' : '💥';
+                    const statusColor = attack.status === 'running' ? '#0f0' : '#f80';
+                    
+                    html += `<div style="border: 1px solid #333; padding: 1rem; margin-bottom: 0.75rem; border-radius: 4px; background: #1a1a2e;">`;
+                    html += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">`;
+                    html += `  <div style="color: #0ff; font-weight: bold; font-size: 1.1rem;">${typeIcon} ${attack.type} Attack</div>`;
+                    html += `  <div style="color: ${statusColor}; font-weight: bold;">● ${attack.status.toUpperCase()}</div>`;
+                    html += `</div>`;
+                    html += `<div style="color: #aaa; font-size: 0.9rem; margin-left: 1rem;">`;
+                    html += `  🎯 Target: <span style="color: #fa4;">${attack.target_ip}</span>`;
+                    
+                    if (attack.gateway_ip) {
+                        html += ` → Gateway: <span style="color: #4af;">${attack.gateway_ip}</span>`;
+                    }
+                    if (attack.packets_sent) {
+                        html += `<br>📊 Packets sent: <span style="color: #0f0;">${attack.packets_sent.toLocaleString()}</span>`;
+                    }
+                    if (attack.threads) {
+                        html += ` | Threads: <span style="color: #f80;">${attack.threads}</span>`;
+                    }
+                    
+                    html += `</div></div>`;
+                }
+                html += '</div>';
             }
 
             document.getElementById('attack-stats').innerHTML = html;
@@ -363,6 +385,12 @@
         }
 
         try {
+            document.getElementById('scan-results').innerHTML = `<div style="color: #0ff; padding: 1rem; text-align: center;">
+                <div style="font-size: 1.2rem; margin-bottom: 0.5rem;">🔍 SCANNING ${range || 'auto-detected range'}...</div>
+                <div style="color: #888; font-size: 0.9rem;">Interface: ${iface} | Full scan: ${fullScan ? 'YES (all ports)' : 'NO (common ports only)'}</div>
+                <div style="margin-top: 1rem; color: #0f0; font-family: monospace;">⚡ Sending ARP requests...</div>
+            </div>`;
+            
             const res = await fetch('/api/scan/start', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -378,13 +406,12 @@
             if (res.ok) {
                 currentScanId = data.scan_id;
                 document.getElementById('scan-stop-btn').disabled = false;
-                document.getElementById('scan-results').innerHTML = `<p>Scanning ${range || 'auto'}...</p>`;
-                scanPollInterval = setInterval(() => pollScanResults(currentScanId), 2000);
+                scanPollInterval = setInterval(() => pollScanResults(currentScanId), 1500);
             } else {
-                document.getElementById('scan-results').innerHTML = `<p style="color:red;">${data.error}</p>`;
+                document.getElementById('scan-results').innerHTML = `<p style="color:red;">❌ ${data.error}</p>`;
             }
         } catch (e) {
-            document.getElementById('scan-results').innerHTML = `<p style="color:red;">Error: ${e.message}</p>`;
+            document.getElementById('scan-results').innerHTML = `<p style="color:red;">❌ Error: ${e.message}</p>`;
         }
     }
 
@@ -413,14 +440,32 @@
             const res = await fetch(`/api/scan/results/${scanId}`);
             const data = await res.json();
 
+            scannedHosts = data.hosts || [];
+            
+            // Show live progress
+            if (data.status === 'running') {
+                const resultsDiv = document.getElementById('scan-results');
+                const progressHtml = `<div style="color: #0ff; padding: 1rem;">
+                    <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">🔍 SCANNING IN PROGRESS...</div>
+                    <div style="color: #0f0; font-size: 1.3rem; font-weight: bold; margin: 1rem 0;">Found ${scannedHosts.length} hosts</div>
+                    <div style="color: #888; font-size: 0.9rem; font-family: monospace;">Status: ${data.status} | Resolving hostnames & services...</div>
+                </div>`;
+                
+                if (scannedHosts.length === 0) {
+                    resultsDiv.innerHTML = progressHtml;
+                } else {
+                    resultsDiv.innerHTML = progressHtml;
+                    renderScanResults(scannedHosts, true);  // append mode
+                }
+            }
+            
             if (data.status === 'completed' || data.status === 'stopped') {
                 clearInterval(scanPollInterval);
                 document.getElementById('scan-stop-btn').disabled = true;
                 scanPollInterval = null;
+                renderScanResults(scannedHosts, false);
             }
 
-            scannedHosts = data.hosts || [];
-            renderScanResults(scannedHosts);
             updateTargetsFromScan();
 
         } catch (e) {
@@ -428,13 +473,24 @@
         }
     }
 
-    function renderScanResults(hosts) {
+    function renderScanResults(hosts, isLive = false) {
         if (!hosts || hosts.length === 0) {
-            document.getElementById('scan-results').innerHTML = '<p>No hosts found.</p>';
+            if (!isLive) {
+                document.getElementById('scan-results').innerHTML = '<p style="color: #888; padding: 1rem;">❌ No hosts found.</p>';
+            }
             return;
         }
 
-        let html = '<div style="font-family: monospace; font-size: 0.9rem;">';
+        let html = '';
+        
+        if (!isLive) {
+            html += `<div style="background: #1a1a2e; padding: 0.75rem; margin-bottom: 1rem; border-radius: 4px; border-left: 3px solid #0f0;">
+                <div style="color: #0f0; font-weight: bold; margin-bottom: 0.3rem;">✅ SCAN COMPLETE</div>
+                <div style="color: #888; font-size: 0.9rem;">Discovered ${hosts.length} active hosts on network</div>
+            </div>`;
+        }
+        
+        html += '<div style="font-family: monospace; font-size: 0.9rem;">';
         hosts.forEach(host => {
             const hostname = host.hostname ? `<strong style="color: #00ff88;">${host.hostname}</strong>` : '<span style="color: #888;">unknown</span>';
             const ip = `<span style="color: #4af;">${host.ip}</span>`;
@@ -566,8 +622,16 @@
 
     function showStatus(elementId, message, type) {
         const el = document.getElementById(elementId);
-        el.className = 'status-box ' + (type === 'success' ? 'status-success' : 'status-error');
-        el.innerText = message;
+        let className = 'status-box ';
+        if (type === 'success') {
+            className += 'status-success';
+        } else if (type === 'error') {
+            className += 'status-error';
+        } else if (type === 'info') {
+            className += 'status-info';
+        }
+        el.className = className;
+        el.innerHTML = message;
     }
 
     function onSnifferPresetChange() {

@@ -333,8 +333,20 @@ class NetworkScanner:
             return 'Unknown'
 
     def _resolve_hostname(self, ip_address: str) -> Optional[str]:
-        """NetBIOS/mDNS + Reverse DNS best-effort resolution."""
-        # Try nmblookup (NetBIOS) first for Windows names
+        """Multi-method hostname resolution: /etc/hosts, NetBIOS, mDNS, reverse DNS."""
+        # Try /etc/hosts first (works on Linux/Unix)
+        try:
+            with open('/etc/hosts', 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        parts = line.split()
+                        if len(parts) >= 2 and parts[0] == ip_address:
+                            return parts[1].split('.')[0]
+        except Exception:
+            pass
+        
+        # Try nmblookup (NetBIOS) for Windows names
         try:
             result = subprocess.run(
                 ["nmblookup", "-A", ip_address], capture_output=True, text=True, timeout=2
@@ -347,13 +359,29 @@ class NetworkScanner:
                             return parts[0].strip()
         except Exception:
             pass
+        
+        # Try nmap NSE script for hostname
+        try:
+            result = subprocess.run(
+                ["nmap", "-sn", "-PR", ip_address], capture_output=True, text=True, timeout=3
+            )
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    if "Nmap scan report for" in line and "(" in line:
+                        hostname = line.split("for")[1].split("(")[0].strip()
+                        if hostname and hostname != ip_address:
+                            return hostname.split('.')[0]
+        except Exception:
+            pass
+        
         # Fallback to reverse DNS
         try:
             hostname, _, _ = socket.gethostbyaddr(ip_address)
             if hostname and hostname != ip_address:
-                return hostname.split('.')[0]  # Return short name
+                return hostname.split('.')[0]
         except Exception:
             pass
+        
         return None
 
     def _detect_services(self, ip_address: str, ports: List[int]) -> List[Dict[str, str]]:

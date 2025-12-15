@@ -572,3 +572,31 @@ hr {
 .fade-in {
     animation: fadeIn 0.5s ease-in;
 }
+/* =============== STATUS BOXES =============== */
+.status-box {
+    padding: 1rem;
+    margin-top: 1rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.95rem;
+    font-weight: bold;
+    border-left: 4px solid;
+}
+
+.status-success {
+    background: rgba(0, 255, 0, 0.1);
+    border-color: #0f0;
+    color: #0f0;
+}
+
+.status-error {
+    background: rgba(255, 0, 0, 0.1);
+    border-color: #f44;
+    color: #f44;
+}
+
+.status-info {
+    background: rgba(0, 255, 255, 0.1);
+    border-color: #0ff;
+    color: #0ff;
+}
