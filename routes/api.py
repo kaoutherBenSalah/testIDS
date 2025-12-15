@@ -9,13 +9,14 @@ import threading
 import uuid
 import sys
 import psutil
+from typing import Optional
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from modules.network_scanner import NetworkScanner
 from modules.traffic_sniffer import TrafficSniffer
-from utils.network_utils import get_local_ip, get_gateway_ip
+from utils.network_utils import get_local_ip, get_gateway_ip, list_interfaces_detailed, get_default_network_range
 from models import active_scanners, active_sniffers
 
 api_bp = Blueprint('api', __name__)
@@ -45,11 +46,12 @@ def start_scan():
     """Start network scanning"""
     try:
         data = request.get_json()
-        network_range = data.get('network_range', '192.168.189.0/24')
+        interface = data.get('interface')
+        network_range = data.get('network_range') or get_default_network_range(interface) or '192.168.189.0/24'
         full_scan = data.get('full_scan', False)
         
         # Create scanner
-        scanner = NetworkScanner()
+        scanner = NetworkScanner(interface=interface)
         scan_id = str(uuid.uuid4())
         
         # Start scan in background
@@ -69,6 +71,7 @@ def start_scan():
         active_scanners[scan_id] = {
             'object': scanner,
             'network_range': network_range,
+            'interface': interface,
             'hosts': [],
             'status': 'in_progress'
         }
@@ -76,7 +79,7 @@ def start_scan():
         return jsonify({
             'scan_id': scan_id,
             'status': 'started',
-            'message': f'Scanning {network_range}...'
+            'message': f'Scanning {network_range} on {interface or "auto"}...'
         }), 200
     
     except Exception as e:
@@ -120,6 +123,19 @@ def stop_scan():
         scan['status'] = 'stopped'
         
         return jsonify({'status': 'stopped', 'message': 'Scan stop requested'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/scan/interfaces', methods=['GET'])
+@require_attacker
+def list_interfaces():
+    """List network interfaces with ip/cidr/gateway info."""
+    try:
+        return jsonify({
+            'interfaces': list_interfaces_detailed(),
+            'default_range': get_default_network_range()
+        }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

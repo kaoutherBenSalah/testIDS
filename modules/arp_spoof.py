@@ -311,12 +311,7 @@ class ARPSpoofer:
 
 
 def main():
-    """Command-line entry point for running the module standalone.
-
-    This allows the developer to run the ARP spoofing tool directly from
-    the command line for testing. When used from the Django web interface,
-    the `ARPSpoofer` class is instantiated and controlled by views.
-    """
+    
     parser = argparse.ArgumentParser(description="ARP Spoofing - MITM tool")
 
     parser.add_argument('-t', '--target', required=True, help='Victim IP address')

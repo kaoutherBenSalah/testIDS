@@ -7,6 +7,10 @@ import socket
 import struct
 import re
 import os  # needed for enable/disable_ip_forwarding
+import ipaddress
+import json
+import subprocess
+from typing import List, Dict, Optional
 from scapy.all import *
 
 
@@ -132,6 +136,174 @@ def get_network_interfaces():
     except Exception as e:
         print(f"❌ Erreur lors de la récupération des interfaces: {e}")
         return []
+
+
+def _parse_nmcli_device_status() -> List[Dict[str, str]]:
+    """Parse nmcli output to build interface inventory."""
+    interfaces = []
+    try:
+        result = subprocess.run(
+            ["nmcli", "-t", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device", "status"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        for line in result.stdout.strip().splitlines():
+            parts = line.split(":")
+            if len(parts) >= 4:
+                interfaces.append({
+                    "name": parts[0],
+                    "type": parts[1],
+                    "state": parts[2],
+                    "connection": parts[3],
+                })
+    except Exception:
+        return []
+    return interfaces
+
+
+def _parse_ip_link_show() -> List[str]:
+    """Fallback to ip link show to list interface names."""
+    names = []
+    try:
+        result = subprocess.run(["ip", "-o", "link", "show"], capture_output=True, text=True, check=False)
+        for line in result.stdout.strip().splitlines():
+            # format: 2: ens33: <...>
+            segments = line.split(":")
+            if len(segments) >= 2:
+                name = segments[1].strip()
+                # skip lo
+                if name:
+                    names.append(name)
+    except Exception:
+        return []
+    return names
+
+
+def _get_interface_addrs(ifname: str) -> Dict[str, Optional[str]]:
+    """Return ipv4 address and netmask for interface if available."""
+    try:
+        result = subprocess.run(["ip", "-j", "addr", "show", ifname], capture_output=True, text=True, check=False)
+        data = json.loads(result.stdout or "[]")
+        if not data:
+            return {"ip": None, "cidr": None, "gateway": None}
+        for addr in data[0].get("addr_info", []):
+            if addr.get("family") == "inet":
+                ip = addr.get("local")
+                prefix = addr.get("prefixlen")
+                cidr = f"{ip}/{prefix}" if ip and prefix is not None else None
+                return {"ip": ip, "cidr": cidr, "gateway": None}
+    except Exception:
+        pass
+    return {"ip": None, "cidr": None, "gateway": None}
+
+
+def _get_default_gateway_for_interface(ifname: str) -> Optional[str]:
+    """Read default gateway for a given interface (Linux)."""
+    try:
+        with open("/proc/net/route") as f:
+            for line in f:
+                fields = line.strip().split()  # Iface Destination Gateway Flags RefCnt Use Metric Mask MTU Window IRTT
+                if len(fields) >= 3 and fields[0] == ifname and fields[1] == "00000000":
+                    return socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
+    except Exception:
+        return None
+    return None
+
+
+def list_interfaces_detailed() -> List[Dict[str, Optional[str]]]:
+    """Return detailed interfaces info with ip/cidr/gateway.
+
+    Priority: nmcli for inventory, ip addr for addresses.
+    """
+    detailed = []
+    base = _parse_nmcli_device_status()
+    base_names = [item.get("name") for item in base]
+    if not base_names:
+        base_names = _parse_ip_link_show()
+        base = [{"name": n, "type": "unknown", "state": "unknown", "connection": ""} for n in base_names]
+    for item in base:
+        name = item.get("name")
+        if not name or name == "lo":
+            continue
+        addr_info = _get_interface_addrs(name)
+        gateway = _get_default_gateway_for_interface(name)
+        detailed.append({
+            "name": name,
+            "type": item.get("type"),
+            "state": item.get("state"),
+            "connection": item.get("connection"),
+            "ip": addr_info.get("ip"),
+            "cidr": addr_info.get("cidr"),
+            "gateway": gateway,
+        })
+    return detailed
+
+
+def get_dhcp_scope() -> Optional[str]:
+    """Try to read DHCP lease files to infer scope (subnet/netmask)."""
+    lease_paths = [
+        "/var/lib/NetworkManager/internal-leases",
+        "/var/lib/NetworkManager/dhclient-*.lease",
+        "/var/lib/dhcp/dhclient*.lease",
+    ]
+    import glob
+    for pattern in lease_paths:
+        for path in glob.glob(pattern):
+            try:
+                with open(path, "r") as f:
+                    content = f.read()
+                subnet_match = re.search(r"option subnet-mask ([0-9.]+);", content)
+                router_match = re.search(r"option routers ([0-9.]+);", content)
+                yiaddr_match = re.search(r"yiaddr ([0-9.]+);", content)
+                if subnet_match and (yiaddr_match or router_match):
+                    ip = yiaddr_match.group(1) if yiaddr_match else router_match.group(1)
+                    mask = subnet_match.group(1)
+                    if ip and mask:
+                        try:
+                            net = ipaddress.IPv4Network(f"{ip}/{mask}", strict=False)
+                            return str(net)
+                        except Exception:
+                            continue
+            except Exception:
+                continue
+    return None
+
+
+def infer_cidr_from_ip(ip: str, netmask: str) -> Optional[str]:
+    """Build CIDR string from ip and netmask."""
+    try:
+        network = ipaddress.IPv4Network(f"{ip}/{netmask}", strict=False)
+        return str(network)
+    except Exception:
+        return None
+
+
+def get_default_network_range(interface: Optional[str] = None) -> Optional[str]:
+    """Return a best-effort local network CIDR using interface info or DHCP scope."""
+    # Try DHCP lease hint first
+    dhcp_scope = get_dhcp_scope()
+    if dhcp_scope:
+        return dhcp_scope
+
+    # Try interface-specific info
+    detailed = list_interfaces_detailed()
+    chosen = None
+    if interface:
+        chosen = next((i for i in detailed if i.get("name") == interface), None)
+    if not chosen and detailed:
+        # pick first interface with IP
+        chosen = next((i for i in detailed if i.get("ip")), detailed[0])
+    if chosen and chosen.get("cidr"):
+        return chosen.get("cidr")
+
+    # Fallback to local ip /24
+    ip = get_local_ip(interface)
+    try:
+        network = ipaddress.IPv4Network(f"{ip}/24", strict=False)
+        return str(network)
+    except Exception:
+        return None
 
 
 def enable_ip_forwarding():

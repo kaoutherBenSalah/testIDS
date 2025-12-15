@@ -15,30 +15,37 @@ Author: Kaouther Ben Salah, Mohamed Firas Ben Hmida, Houssem Eddine Ben Chaabane
 import sys
 import subprocess
 import socket
-from pathlib import Path
-from scapy.all import ARP, Ether, srp, sr1, IP, ICMP, TCP
+import ssl
 import ipaddress
+from pathlib import Path
+from typing import List, Dict, Optional
+from scapy.all import ARP, Ether, srp, sr1, IP, ICMP, TCP
 
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.logger import get_logger
+from utils.network_utils import list_interfaces_detailed, get_default_network_range
 
 
 class Host:
     """Represents a discovered network host"""
-    
+
     def __init__(self, ip, mac='Unknown'):
         self.ip = ip
         self.mac = mac
-        self.open_ports = []
+        self.hostname = None
+        self.open_ports: List[int] = []
+        self.services: List[Dict[str, str]] = []  # [{'port': 80, 'service': 'http', 'banner': 'nginx'}, ...]
         self.is_active = True
         self.os_guess = 'Unknown'
-    
+
     def to_dict(self):
         """Convert host to dictionary for JSON response"""
         return {
             'ip': self.ip,
             'mac': self.mac,
+            'hostname': self.hostname,
             'open_ports': self.open_ports,
+            'services': self.services,
             'is_active': self.is_active,
             'os_guess': self.os_guess
         }
@@ -69,6 +76,7 @@ class NetworkScanner:
         self.logger = get_logger("NetworkScanner")
         self.discovered_hosts = []
         self.stop_requested = False
+        self.default_ports = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 8080]
     
     def scan_subnet(self, network_range):
         """
@@ -130,8 +138,7 @@ class NetworkScanner:
             list<int>: List of open ports
         """
         if ports is None:
-            # Common ports to scan
-            ports = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 8080]
+            ports = self.default_ports
         
         self.logger.info(f"🔍 Scanning ports on {ip_address}")
         open_ports = []
@@ -144,13 +151,13 @@ class NetworkScanner:
                 # Create TCP SYN packet
                 packet = IP(dst=ip_address) / TCP(dport=port, flags="S")
                 response = sr1(packet, timeout=1, verbose=False)
-                
+
                 # Check if port is open (SYN-ACK response)
                 if response and response.haslayer(TCP):
                     if response[TCP].flags == 0x12:  # SYN-ACK
                         open_ports.append(port)
                         self.logger.info(f"  ✅ Port {port} is OPEN")
-                        
+
                         # Send RST to close connection
                         rst = IP(dst=ip_address) / TCP(dport=port, flags="R")
                         sr1(rst, timeout=1, verbose=False)
@@ -165,7 +172,7 @@ class NetworkScanner:
         """Signal the scanner to stop after current operation."""
         self.stop_requested = True
     
-    def identify_active_machines(self, network_range, full_scan=False):
+    def identify_active_machines(self, network_range=None, full_scan=False):
         """
         Identify all active machines on network
         Alias for scan_subnet with optional port scanning
@@ -177,6 +184,9 @@ class NetworkScanner:
         Returns:
             list<Host>: List of active hosts with detailed info
         """
+        if not network_range:
+            network_range = get_default_network_range(self.interface) or '192.168.1.0/24'
+
         hosts = self.scan_subnet(network_range)
         
         if not full_scan:
@@ -189,9 +199,15 @@ class NetworkScanner:
                 break
             self.logger.info(f"Gathering info for {host.ip}...")
             
+            # Hostname resolution
+            host.hostname = self._resolve_hostname(host.ip)
+
             # Scan common ports
             host.open_ports = self.scan_ports(host.ip)
-            
+
+            # Service/banner detection
+            host.services = self._detect_services(host.ip, host.open_ports)
+
             # Simple OS detection based on open ports
             host.os_guess = self._guess_os(host.open_ports)
         
@@ -307,6 +323,86 @@ class NetworkScanner:
             return 'Web Server'
         else:
             return 'Unknown'
+
+    def _resolve_hostname(self, ip_address: str) -> Optional[str]:
+        """Reverse DNS + NetBIOS/mDNS best-effort resolution."""
+        try:
+            hostname, _, _ = socket.gethostbyaddr(ip_address)
+            return hostname
+        except Exception:
+            pass
+        # Try nmblookup (NetBIOS) if available
+        try:
+            result = subprocess.run(
+                ["nmblookup", "-A", ip_address], capture_output=True, text=True, timeout=2
+            )
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    if "<00>" in line and "GROUP" not in line:
+                        return line.split()[0]
+        except Exception:
+            pass
+        return None
+
+    def _detect_services(self, ip_address: str, ports: List[int]) -> List[Dict[str, str]]:
+        """Attempt to fingerprint services/banners on open ports."""
+        services = []
+        for port in ports:
+            service_name = self._common_service_name(port)
+            banner = self._grab_banner(ip_address, port, service_name)
+            services.append({
+                'port': port,
+                'service': service_name or 'unknown',
+                'banner': banner or ''
+            })
+        return services
+
+    def _grab_banner(self, ip_address: str, port: int, service_hint: Optional[str]) -> Optional[str]:
+        """Lightweight banner grabbing with short timeouts."""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1.5)
+            sock.connect((ip_address, port))
+
+            if service_hint in ['http', 'http-alt'] or port in [80, 8080, 8000]:
+                sock.sendall(b"HEAD / HTTP/1.0\r\nHost: %b\r\n\r\n" % ip_address.encode())
+            elif service_hint == 'smtp' or port == 25:
+                sock.sendall(b"EHLO test.local\r\n")
+            elif service_hint == 'pop3' or port == 110:
+                sock.sendall(b"QUIT\r\n")
+            elif service_hint == 'imap' or port == 143:
+                sock.sendall(b"\r\n")
+            elif service_hint == 'ftp' or port == 21:
+                sock.sendall(b"QUIT\r\n")
+
+            data = sock.recv(512)
+            sock.close()
+            if not data:
+                return None
+            return data.decode(errors='ignore').strip().replace('\r', '').replace('\n', ' ')[:200]
+        except Exception:
+            # Try minimal TLS client hello for 443 to extract SNI/cert CN
+            if port == 443:
+                try:
+                    context = ssl.create_default_context()
+                    with context.wrap_socket(socket.socket(socket.AF_INET), server_hostname=ip_address) as s:
+                        s.settimeout(2)
+                        s.connect((ip_address, port))
+                        cert = s.getpeercert()
+                        if cert:
+                            subject = dict(x[0] for x in cert.get('subject', []))
+                            return subject.get('commonName')
+                except Exception:
+                    return None
+            return None
+
+    def _common_service_name(self, port: int) -> Optional[str]:
+        mapping = {
+            21: 'ftp', 22: 'ssh', 23: 'telnet', 25: 'smtp', 53: 'dns', 80: 'http',
+            110: 'pop3', 143: 'imap', 443: 'https', 445: 'smb', 3306: 'mysql',
+            3389: 'rdp', 5432: 'postgres', 8080: 'http-alt', 8000: 'http-alt'
+        }
+        return mapping.get(port)
 
 
 # ============================================================================
