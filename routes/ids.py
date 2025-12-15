@@ -163,4 +163,3 @@ def block_entity():
     except Exception as exc:  # noqa: BLE001
         logger.error(f"Failed to record block: {exc}")
         return jsonify({'error': str(exc)}), 500
-*** End Patch
