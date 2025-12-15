@@ -3,68 +3,106 @@
 {% block title %}🛡️ Defender Interface{% endblock %}
 
 {% block content %}
+<style>
+    .ids-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .badge.green { background: #123c12; color: #9aff9a; border: 1px solid #2fd62f; }
+    .badge.red { background: #3d1010; color: #ff9a9a; border: 1px solid #ff4f4f; }
+    .badge.yellow { background: #3d3a10; color: #ffe89a; border: 1px solid #f0c24f; }
+    .alert-list { max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    .alert-card { background: #0f0f0f; border: 1px solid #1f1f1f; padding: 12px 14px; border-radius: 6px; }
+    .alert-card header { display: flex; justify-content: space-between; align-items: center; }
+    .pill { padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; border: 1px solid #2c2c2c; }
+    .pill.small { font-size: 0.75rem; }
+    .pill.gray { background: #1f1f1f; color: #ccc; }
+    .btn-inline { display: inline-flex; gap: 8px; margin-top: 10px; }
+    .compact-inputs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .muted { color: #9a9a9a; font-size: 0.9rem; }
+</style>
+
 <div class="defender-container fade-in">
     <div class="dashboard-header">
         <h1>🛡️ Defender Console</h1>
-        <p class="gray">Intrusion Detection System Monitoring</p>
+        <p class="gray">Live IDS monitoring, ARP anomaly checks, and SYN flood heuristics</p>
     </div>
-    
-    <div class="card">
-        <h2 class="card-header">📊 Detection Logs</h2>
-        <div class="card-body">
-            <div class="terminal-output">
-                <p>Initializing IDS monitoring system...</p>
-                <p>Status: <span class="green">READY</span></p>
-                <p>Real-time monitoring of detected attacks coming soon...</p>
+
+    <div class="ids-grid">
+        <div class="card">
+            <h2 class="card-header">⚙️ IDS Control</h2>
+            <div class="card-body">
+                <div class="form-group compact-inputs">
+                    <div>
+                        <label>Interface (optional)</label>
+                        <input id="ids-interface" class="form-control" placeholder="eth0 / wlan0" />
+                    </div>
+                    <div>
+                        <label>Network range</label>
+                        <input id="ids-range" class="form-control" placeholder="192.168.1.0/24" />
+                    </div>
+                </div>
+                <div class="form-group compact-inputs">
+                    <div>
+                        <label>ARP scan interval (s)</label>
+                        <input id="ids-arp" type="number" min="5" value="20" class="form-control" />
+                    </div>
+                    <div>
+                        <label>SYN threshold / window</label>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <input id="ids-syn-th" type="number" min="20" value="150" class="form-control" style="width:50%;" />
+                            <input id="ids-syn-win" type="number" min="3" value="10" class="form-control" style="width:50%;" />
+                        </div>
+                        <small class="muted">Count per window (seconds)</small>
+                    </div>
+                    <div>
+                        <label>Unique sources min</label>
+                        <input id="ids-syn-unique" type="number" min="5" value="15" class="form-control" />
+                    </div>
+                </div>
+                <div class="btn-inline">
+                    <button class="btn btn-success" onclick="startIds()">Start IDS</button>
+                    <button class="btn btn-danger" onclick="stopIds()">Stop IDS</button>
+                </div>
+                <p class="muted" id="ids-message" style="margin-top:8px;">Ready.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="card-header">📈 Status & Stats</h2>
+            <div class="card-body">
+                <p>State: <span id="ids-state" class="badge gray">unknown</span></p>
+                <p>Interface: <span id="ids-ifc" class="gray">-</span></p>
+                <p>Range: <span id="ids-range-val" class="gray">-</span></p>
+                <div class="stats-grid" style="margin-top:10px;">
+                    <div class="stat-card">
+                        <h3>Packets Seen</h3>
+                        <div class="value blue" id="stat-packets">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Alerts</h3>
+                        <div class="value red" id="stat-alerts">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>ARP Scans</h3>
+                        <div class="value green" id="stat-arp">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>SYN Events</h3>
+                        <div class="value yellow" id="stat-syn">0</div>
+                    </div>
+                </div>
+                <p class="muted">Started at: <span id="ids-started">-</span></p>
             </div>
         </div>
     </div>
-    
+
     <div class="card">
-        <h2 class="card-header">📈 Statistics</h2>
+        <h2 class="card-header">🚨 Live Alerts</h2>
         <div class="card-body">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h3>Total Scans</h3>
-                    <div class="value green">0</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Attacks Detected</h3>
-                    <div class="value red">0</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Packets Analyzed</h3>
-                    <div class="value blue">0</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Alerts Triggered</h3>
-                    <div class="value yellow">0</div>
-                </div>
-            </div>
-            <p class="gray text-center">Attack statistics and analytics coming soon...</p>
-        </div>
-    </div>
-    
-    <div class="card">
-        <h2 class="card-header">🔧 IDS Configuration</h2>
-        <div class="card-body">
-            <div class="form-group">
-                <label>Detection Mode:</label>
-                <select class="form-control">
-                    <option>Passive Monitoring</option>
-                    <option>Active Defense (Coming Soon)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Alert Threshold:</label>
-                <select class="form-control">
-                    <option>Low</option>
-                    <option selected>Medium</option>
-                    <option>High</option>
-                </select>
-            </div>
-            <button class="btn btn-success" disabled>Apply Configuration</button>
+            <div id="alerts-list" class="alert-list"></div>
+            <p class="muted" id="alerts-empty">No alerts yet. Monitoring...</p>
         </div>
     </div>
 </div>
+
+<script src="{{ url_for('static', filename='js/defender.js') }}"></script>
 {% endblock %}

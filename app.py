@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from models import User, get_or_create_users, get_user_by_username, verify_password, load_users_db
 from routes.attacks import attacks_bp
 from routes.api import api_bp
+from routes.ids import ids_bp
 from utils.network_utils import get_local_ip, get_gateway_ip
 
 # Create Flask app
@@ -34,6 +35,7 @@ login_manager.login_view = 'login'
 # Register blueprints
 app.register_blueprint(attacks_bp, url_prefix='/api/attack')
 app.register_blueprint(api_bp, url_prefix='/api')
+app.register_blueprint(ids_bp, url_prefix='/api')
 
 # Initialize default users
 get_or_create_users()

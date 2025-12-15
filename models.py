@@ -6,6 +6,7 @@ Uses JSON files instead of SQLite for zero-config database
 import json
 import os
 from pathlib import Path
+from typing import Dict, List, Optional
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Database file
@@ -16,6 +17,15 @@ DB_PATH.parent.mkdir(exist_ok=True)
 active_attacks = {}  # {attack_id: {'type': 'arp', 'target': '192.168.189.20', ...}}
 active_scanners = {}  # {scan_id: {'hosts': [], 'status': 'in_progress'}}
 active_sniffers = {}  # {sniffer_id: {'packets': [], 'status': 'capturing'}}
+
+# IDS runtime state
+ids_monitor = None  # Will hold a modules.ids_monitor.IDSMonitor instance
+ids_alerts: List[Dict[str, object]] = []
+ids_blocks: List[Dict[str, object]] = []
+ids_stats = {
+    'total_alerts': 0,
+    'blocks_requested': 0,
+}
 
 # Attack logs stored in memory (reset on restart)
 attack_logs = []  # [{'type': 'ARP', 'target': '192.168.189.20', 'status': 'running', ...}]
@@ -119,6 +129,47 @@ def log_attack(attack_type, target_ip, gateway_ip=None, status='running'):
 def get_attack_logs():
     """Get all attack logs"""
     return attack_logs
+
+
+# ============================================================================
+# IDS HELPERS
+# ============================================================================
+
+
+def register_ids_monitor(monitor):
+    """Attach the global IDS monitor instance."""
+    global ids_monitor
+    ids_monitor = monitor
+    return ids_monitor
+
+
+def record_ids_alert(alert: Dict[str, object]):
+    """Persist an IDS alert in memory and bump stats."""
+    ids_alerts.append(alert)
+    ids_stats['total_alerts'] += 1
+    return alert
+
+
+def list_ids_alerts(limit: Optional[int] = None):
+    """Return the most recent IDS alerts."""
+    alerts = ids_alerts[-limit:] if limit else ids_alerts
+    return list(alerts)
+
+
+def ack_ids_alert(alert_id: str) -> bool:
+    """Mark an alert as acknowledged."""
+    for alert in ids_alerts:
+        if alert.get('id') == alert_id:
+            alert['acknowledged'] = True
+            return True
+    return False
+
+
+def request_block(entity: Dict[str, object]):
+    """Record a defender-requested block/stop action (no enforcement yet)."""
+    ids_blocks.append(entity)
+    ids_stats['blocks_requested'] += 1
+    return entity
 
 
 # Initialize on import

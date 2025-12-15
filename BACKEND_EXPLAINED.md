@@ -7,6 +7,7 @@ This file summarizes how the backend works, where key functions live, and how re
 - Registers blueprints:
   - `/api/attack/*` → routes/attacks.py (ARP, SYN attacks)
   - `/api/*` → routes/api.py (scanner, sniffer, info)
+  - `/api/ids/*` → routes/ids.py (IDS control + alerts, DEFENDER only)
 - Auth routes:
   - `/login` (GET/POST): checks username/password via models.py → JSON user store.
   - `/logout`: clears session.
@@ -21,6 +22,7 @@ This file summarizes how the backend works, where key functions live, and how re
   - `get_user_by_username(username)`: return User.
 - In-memory runtime maps (reset on restart):
   - `active_attacks`, `active_scanners`, `active_sniffers`, `attack_logs`.
+  - IDS state: `ids_monitor` reference, `ids_alerts` list, `ids_blocks` (recorded defender blocks), `ids_stats` counters.
 
 ## Attack API (routes/attacks.py)
 - Middleware: `require_attacker` ensures role ATTACKER.
@@ -44,6 +46,15 @@ This file summarizes how the backend works, where key functions live, and how re
   - `POST /api/sniff/stop`: stop and delete sniffer.
 - Network info:
   - `GET /api/network/info`: returns local_ip, gateway_ip, counts, cpu/ram.
+
+## IDS API (routes/ids.py)
+- Role gate: `require_defender` (session `user_role == DEFENDER`).
+- Endpoints:
+  - `POST /api/ids/start`: start IDS monitor (configurable interface, CIDR, ARP interval, SYN thresholds/window, unique sources gate).
+  - `POST /api/ids/stop`: stop monitor threads.
+  - `GET /api/ids/status`: running/config/stats plus last 50 alerts.
+  - `POST /api/ids/alerts/<id>/ack`: mark alert acknowledged.
+  - `POST /api/ids/block`: record defender block/stop intent (no packet enforcement yet; audit only).
 
 ## Modules (core logic)
 
@@ -69,6 +80,13 @@ This file summarizes how the backend works, where key functions live, and how re
 - `get_packets(limit)`: returns recent captured packet infos.
 - `analyze_packet(packet)`: extracts protocol, src/dst, ports, length, info (HTTP/DNS/ARP/ICMP/TCP/UDP).
 
+### modules/ids_monitor.py (IDSMonitor)
+- Threads: ARP scan loop + SYN sniff loop.
+- ARP anomaly detection: ARP sweep over configured CIDR → MAC→IP table → raises `ARP_ANOMALY` when a MAC maps to multiple IPs.
+- SYN heuristic: sniffs `tcp[tcpflags] & tcp-syn != 0`, keeps per-destination sliding window; raises `SYN_FLOOD_SUSPECT` if `syn_threshold` and `syn_unique_sources` are exceeded within `syn_window_sec`.
+- Alerts: appended in-memory (max 200), logged through `SecurityLogger.attack_detected`, forwarded to `models.record_ids_alert` sink. Includes id/type/severity/summary/details/timestamp/action placeholder.
+- Stats: `started_at`, `packets_seen`, `alerts`, `arp_scans`, `syn_events`.
+
 ## Utils
 - utils/network_utils.py:
   - `get_local_ip()`: picks primary IP.
@@ -87,6 +105,12 @@ This file summarizes how the backend works, where key functions live, and how re
 ## Data Flow (Scanner + Sniffer)
 - Scanner: POST /api/scan/start → background scan → results saved in active_scanners[scan_id] → GET results.
 - Sniffer: POST /api/sniff/start → background sniff → packets kept in memory → GET packets (last 50) → stop to release.
+
+## Defender UI & IDS Flow
+- Template: `templates/defender.html`; JS: `static/js/defender.js`.
+- On load, polls `/api/ids/status` every 5s to hydrate running state, stats, and latest alerts.
+- Start/stop controls POST to `/api/ids/start` and `/api/ids/stop` with configurable interface, CIDR, ARP interval, SYN thresholds/window, and minimum unique sources.
+- Alerts panel shows severity badge + summary + JSON details; buttons to acknowledge (`/api/ids/alerts/<id>/ack`) and record a block/stop intent (`/api/ids/block`).
 
 ## Persistence
 - Users: JSON file data/users.json created/updated on startup if missing.

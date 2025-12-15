@@ -1,0 +1,166 @@
+"""
+IDS Routes - start/stop/status + alert actions
+Accessible to DEFENDER role.
+"""
+
+from flask import Blueprint, jsonify, request, session
+from functools import wraps
+from datetime import datetime
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+import models
+from modules.ids_monitor import IDSMonitor
+from models import (
+    register_ids_monitor,
+    record_ids_alert,
+    list_ids_alerts,
+    ack_ids_alert,
+    request_block,
+    ids_stats,
+)
+from utils.logger import get_logger
+
+ids_bp = Blueprint('ids', __name__)
+logger = get_logger("IDSRoutes")
+
+
+# ============================================================================
+# MIDDLEWARE: Check Defender Role
+# ============================================================================
+
+def require_defender(f):
+    """Decorator to require defender role"""
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('user_role') != 'DEFENDER':
+            return jsonify({'error': 'Access denied'}), 403
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+# ============================================================================
+# IDS CONTROL ENDPOINTS
+# ============================================================================
+
+
+@ids_bp.route('/ids/start', methods=['POST'])
+@require_defender
+def start_ids():
+    try:
+        data = request.get_json(silent=True) or {}
+        interface = data.get('interface')
+        network_range = data.get('network_range')
+        arp_interval = int(data.get('arp_interval', 20))
+        syn_threshold = int(data.get('syn_threshold', 150))
+        syn_window_sec = int(data.get('syn_window_sec', 10))
+        syn_unique_sources = int(data.get('syn_unique_sources', 15))
+
+        monitor = models.ids_monitor
+        if monitor and monitor.running.is_set():
+            return jsonify({'status': 'running', 'message': 'IDS already running'}), 200
+
+        monitor = IDSMonitor(
+            interface=interface,
+            network_range=network_range,
+            arp_interval=arp_interval,
+            syn_threshold=syn_threshold,
+            syn_window_sec=syn_window_sec,
+            syn_unique_sources=syn_unique_sources,
+            alert_sink=record_ids_alert,
+        )
+        register_ids_monitor(monitor)
+        monitor.start()
+
+        return jsonify({
+            'status': 'started',
+            'config': monitor.get_status(),
+            'message': 'IDS monitor started'
+        }), 200
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Failed to start IDS: {exc}")
+        return jsonify({'error': str(exc)}), 500
+
+
+@ids_bp.route('/ids/stop', methods=['POST'])
+@require_defender
+def stop_ids():
+    try:
+        monitor = models.ids_monitor
+        if not monitor:
+            return jsonify({'status': 'stopped', 'message': 'IDS not initialized'}), 200
+        monitor.stop()
+        return jsonify({'status': 'stopped', 'message': 'IDS monitor stopped'}), 200
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Failed to stop IDS: {exc}")
+        return jsonify({'error': str(exc)}), 500
+
+
+@ids_bp.route('/ids/status', methods=['GET'])
+@require_defender
+def status_ids():
+    try:
+        monitor = models.ids_monitor
+        status_payload = monitor.get_status() if monitor else {
+            'running': False,
+            'interface': None,
+            'network_range': None,
+            'config': {},
+            'stats': {},
+            'alerts': [],
+        }
+        return jsonify({
+            'status': status_payload,
+            'alerts': list_ids_alerts(limit=50),
+            'stats': ids_stats,
+        }), 200
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Failed to fetch IDS status: {exc}")
+        return jsonify({'error': str(exc)}), 500
+
+
+# ============================================================================
+# ALERT ACTIONS
+# ============================================================================
+
+
+@ids_bp.route('/ids/alerts/<alert_id>/ack', methods=['POST'])
+@require_defender
+def ack_alert_route(alert_id):
+    try:
+        if ack_ids_alert(alert_id):
+            return jsonify({'status': 'acknowledged'}), 200
+        return jsonify({'error': 'Alert not found'}), 404
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Failed to acknowledge alert: {exc}")
+        return jsonify({'error': str(exc)}), 500
+
+
+@ids_bp.route('/ids/block', methods=['POST'])
+@require_defender
+def block_entity():
+    """Record a defender-driven block/stop request (no packet enforcement yet)."""
+    try:
+        data = request.get_json(silent=True) or {}
+        alert_id = data.get('alert_id')
+        target_ip = data.get('target_ip')
+        target_mac = data.get('target_mac')
+        reason = data.get('reason') or 'manual'
+
+        entity = {
+            'alert_id': alert_id,
+            'target_ip': target_ip,
+            'target_mac': target_mac,
+            'reason': reason,
+            'timestamp': datetime.utcnow().isoformat() + 'Z',
+        }
+        request_block(entity)
+        return jsonify({'status': 'recorded', 'action': entity}), 200
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Failed to record block: {exc}")
+        return jsonify({'error': str(exc)}), 500
+*** End Patch
