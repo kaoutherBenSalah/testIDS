@@ -143,9 +143,9 @@ def status_ids():
 def ids_overview():
     """Aggregate IDS status, alerts, stats, and a live node inventory."""
     try:
-        logger.info("Fetching IDS overview (fast scan)...")
-        # Use a lightweight discovery (ARP only, no port/service probing) to keep UI fast.
-        nodes, network_range = _get_or_discover_nodes(full_scan=False)
+        logger.info("Fetching IDS overview (fast scan with hostnames)...")
+        # Use full scan so we get hostnames; discovery cache keeps it responsive
+        nodes, network_range = _get_or_discover_nodes(full_scan=True)
         monitor = models.ids_monitor
         status_payload = monitor.get_status() if monitor else {
             'running': False,
@@ -260,7 +260,8 @@ def _annotate_nodes(hosts, alerts):
 
 def _get_or_discover_nodes(force: bool = False, full_scan: bool = True):
     now = time.time()
-    if not force and (now - _discovery_cache['ts']) < _DISCOVERY_TTL and _discovery_cache['nodes']:
+    # Cache discovery results for 10 seconds to keep UI responsive
+    if not force and (now - _discovery_cache['ts']) < 10 and _discovery_cache['nodes']:
         return _discovery_cache['nodes'], _discovery_cache['range']
 
     monitor = models.ids_monitor
