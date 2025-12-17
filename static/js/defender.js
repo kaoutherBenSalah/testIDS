@@ -65,7 +65,10 @@ async function fetchOverview() {
         renderNodes(data.nodes || []);
         renderAlerts(data.alerts || []);
     } catch (err) {
-    console.error('fetchOverview error:', err);
+        console.error('fetchOverview error:', err);
+        setMessage(`Error loading overview: ${err.message}`, true);
+    }
+}
 
 function renderNodes(nodes) {
     if (!nodesBody) return;
