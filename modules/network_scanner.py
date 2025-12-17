@@ -63,7 +63,7 @@ class NetworkScanner:
     - Hostname resolution
     """
     
-    def __init__(self, interface=None, timeout=2):
+    def __init__(self, interface=None, timeout=1):
         """
         Initialize Network Scanner
         
@@ -158,7 +158,7 @@ class NetworkScanner:
             try:
                 # Create TCP SYN packet
                 packet = IP(dst=ip_address) / TCP(dport=port, flags="S")
-                response = sr1(packet, timeout=1, verbose=False)
+                response = sr1(packet, timeout=0.5, verbose=False)
 
                 # Check if port is open (SYN-ACK response)
                 if response and response.haslayer(TCP):
@@ -477,7 +477,7 @@ class NetworkScanner:
         """Lightweight banner grabbing with short timeouts."""
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(1.5)
+            sock.settimeout(0.7)
             sock.connect((ip_address, port))
 
             if service_hint in ['http', 'http-alt'] or port in [80, 8080, 8000]:
@@ -504,7 +504,7 @@ class NetworkScanner:
                 try:
                     context = ssl.create_default_context()
                     with context.wrap_socket(socket.socket(socket.AF_INET), server_hostname=ip_address) as s:
-                        s.settimeout(2)
+                        s.settimeout(1)
                         s.connect((ip_address, port))
                         cert = s.getpeercert()
                         if cert:
