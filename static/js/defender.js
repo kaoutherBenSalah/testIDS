@@ -164,6 +164,9 @@ function renderAlerts(alerts) {
 
 async function startIds() {
     try {
+        console.log('Starting IDS...');
+        setMessage('Starting IDS...', false);
+    
         const payload = {
             interface: document.getElementById('ids-interface').value || null,
             network_range: document.getElementById('ids-range').value || null,
@@ -172,6 +175,7 @@ async function startIds() {
             syn_window_sec: Number(document.getElementById('ids-syn-win').value || 10),
             syn_unique_sources: Number(document.getElementById('ids-syn-unique').value || 15),
         };
+        console.log('IDS payload:', payload);
 
         const res = await fetch('/api/ids/start', {
             method: 'POST',
@@ -179,11 +183,13 @@ async function startIds() {
             body: JSON.stringify(payload),
         });
         const data = await res.json();
+        console.log('IDS start response:', res.status, data);
         if (!res.ok) throw new Error(data.error || 'start failed');
-        setMessage(data.message || 'IDS started');
+        setMessage('✅ ' + (data.message || 'IDS started'));
         fetchOverview();
     } catch (err) {
-        setMessage(`Start error: ${err.message}`, true);
+        console.error('Start IDS error:', err);
+        setMessage(`❌ Start error: ${err.message}`, true);
     }
 }
 
@@ -239,14 +245,17 @@ async function blockIp(ip, mac, alertId = null) {
 
 async function refreshInventory() {
     try {
-        setMessage('Refreshing network...');
+        console.log('Refreshing network inventory...');
+        setMessage('🔄 Scanning network... (may take 10-30 seconds)', false);
         const res = await fetch('/api/ids/discover', { method: 'POST' });
         const data = await res.json();
+        console.log('Discovery response:', res.status, data);
         if (!res.ok) throw new Error(data.error || 'discover failed');
         renderNodes(data.nodes || []);
-        setMessage('Inventory refreshed');
+        setMessage(`✅ Inventory refreshed - found ${data.nodes.length} nodes`);
     } catch (err) {
-        setMessage(`Discover error: ${err.message}`, true);
+        console.error('Refresh inventory error:', err);
+        setMessage(`❌ Discover error: ${err.message}`, true);
     }
 }
 
@@ -254,9 +263,28 @@ function wireButtons() {
     const startBtn = document.getElementById('start-ids-btn');
     const stopBtn = document.getElementById('stop-ids-btn');
     const refreshBtn = document.getElementById('refresh-inventory');
-    if (startBtn) startBtn.onclick = startIds;
-    if (stopBtn) stopBtn.onclick = stopIds;
-    if (refreshBtn) refreshBtn.onclick = refreshInventory;
+  
+    if (startBtn) {
+        console.log('Wired Start IDS button');
+        startBtn.onclick = () => {
+            console.log('Start IDS button clicked');
+            startIds();
+        };
+    }
+    if (stopBtn) {
+        console.log('Wired Stop IDS button');
+        stopBtn.onclick = () => {
+            console.log('Stop IDS button clicked');
+            stopIds();
+        };
+    }
+    if (refreshBtn) {
+        console.log('Wired Refresh button');
+        refreshBtn.onclick = () => {
+            console.log('Refresh button clicked');
+            refreshInventory();
+        };
+    }
 }
 
 if (document.readyState === 'loading') {
