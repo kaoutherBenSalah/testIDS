@@ -20,11 +20,13 @@ active_sniffers = {}  # {sniffer_id: {'packets': [], 'status': 'capturing'}}
 
 # IDS runtime state
 ids_monitor = None  # Will hold a modules.ids_monitor.IDSMonitor instance
+firewall_blocker = None  # Will hold a modules.firewall_blocker.FirewallBlocker instance
 ids_alerts: List[Dict[str, object]] = []
 ids_blocks: List[Dict[str, object]] = []
 ids_stats = {
     'total_alerts': 0,
     'blocks_requested': 0,
+    'blocks_executed': 0,
 }
 
 # Attack logs stored in memory (reset on restart)

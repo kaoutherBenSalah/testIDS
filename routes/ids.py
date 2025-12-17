@@ -204,7 +204,7 @@ def ack_alert_route(alert_id):
 @ids_bp.route('/ids/block', methods=['POST'])
 @require_defender
 def block_entity():
-    """Record a defender-driven block/stop request (no packet enforcement yet)."""
+    """Block an IP using system firewall."""
     try:
         data = request.get_json(silent=True) or {}
         alert_id = data.get('alert_id')
@@ -212,17 +212,36 @@ def block_entity():
         target_mac = data.get('target_mac')
         reason = data.get('reason') or 'manual'
 
+        if not target_ip:
+            return jsonify({'error': 'target_ip required'}), 400
+
+        # Record the block request
         entity = {
             'alert_id': alert_id,
             'target_ip': target_ip,
             'target_mac': target_mac,
             'reason': reason,
             'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'blocked': False,
         }
+        
+        # Actually block the IP using firewall
+        blocker = models.firewall_blocker
+        if blocker:
+            success = blocker.block_ip(target_ip, reason)
+            entity['blocked'] = success
+            if success:
+                models.ids_stats['blocks_executed'] = models.ids_stats.get('blocks_executed', 0) + 1
+                logger.info(f"✅ Blocked {target_ip} via firewall (reason: {reason})")
+            else:
+                logger.warning(f"⚠️ Failed to block {target_ip} via firewall")
+        else:
+            logger.warning("⚠️ Firewall blocker not initialized")
+        
         request_block(entity)
-        return jsonify({'status': 'recorded', 'action': entity}), 200
+        return jsonify({'status': 'blocked' if entity['blocked'] else 'recorded', 'action': entity}), 200
     except Exception as exc:  # noqa: BLE001
-        logger.error(f"Failed to record block: {exc}")
+        logger.error(f"Failed to block: {exc}")
         return jsonify({'error': str(exc)}), 500
 
 

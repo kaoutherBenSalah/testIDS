@@ -168,6 +168,11 @@ if __name__ == '__main__':
     os.makedirs('static/css', exist_ok=True)
     os.makedirs('static/js', exist_ok=True)
     
+    # Initialize firewall blocker
+    from modules.firewall_blocker import FirewallBlocker
+    import models
+    models.firewall_blocker = FirewallBlocker()
+    
     print("=" * 60)
     print("🔐 IDS - Flask Version")
     print("=" * 60)
