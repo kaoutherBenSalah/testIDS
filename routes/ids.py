@@ -236,10 +236,15 @@ def _node_status(node, alerts):
     if not ip:
         return 'danger'
 
+    # Whitelist: gateway and trusted servers are always safe
+    whitelist = {'192.168.111.1', '192.168.111.2', '192.168.111.254', '192.168.111.12'}
+    if ip in whitelist:
+        return 'safe'
+
     # Mark as danger if any alert references this IP
     for alert in alerts:
         details = alert.get('details', {}) if isinstance(alert, dict) else {}
-        if ip in [details.get('dst_ip'), details.get('ip')]:
+        if ip in [details.get('dst_ip'), details.get('ip'), details.get('src_ip')]:
             return 'danger'
 
     hostname = node.get('hostname') if isinstance(node, dict) else None

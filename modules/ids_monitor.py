@@ -41,12 +41,16 @@ class IDSMonitor:
         self.syn_unique_sources = max(5, syn_unique_sources)
         self.alert_sink = alert_sink
 
+        # Whitelist: trusted IPs (gateway, servers)
+        self.whitelist = {'192.168.111.1', '192.168.111.2', '192.168.111.254', '192.168.111.12'}
+        
         self.logger = get_logger("IDSMonitor")
         self.running = threading.Event()
         self.threads: List[threading.Thread] = []
         self.alerts: List[Alert] = []
         self.alert_cooldowns: Dict[str, float] = {}
         self.syn_history: Dict[str, List[tuple]] = defaultdict(list)  # dst_ip -> [(ts, src_ip)]
+        self.arp_table: Dict[str, str] = {}  # ip -> mac (baseline learned mappings)
 
         self.stats = {
             "started_at": None,
@@ -219,49 +223,46 @@ class IDSMonitor:
             self.alert_cooldowns[dst_ip] = ts + self.syn_window_sec
 
     def _handle_arp_packet(self, packet, arp_seen):
-        """Detect ARP spoofing via gratuitous/suspicious ARP replies."""
+        """Detect ARP spoofing by tracking MAC changes for each IP."""
         if not packet.haslayer(ARP):
             return
         
         arp_layer = packet[ARP]
-        # ARP reply (op=2) or gratuitous (is_at=1, target == sender)
         is_reply = arp_layer.op == 2
-        is_gratuitous = (
-            arp_layer.op == 2 and 
-            arp_layer.pdst == arp_layer.psrc
-        )
         
         if not is_reply:
             return
         
         src_ip = arp_layer.psrc
         src_mac = arp_layer.hwsrc
-        ts = time.time()
-        key = (src_ip, src_mac)
         
-        # Track this IP->MAC mapping; if we see it change rapidly, it's spoofing
-        if key in arp_seen:
-            last_ts = arp_seen[key]
-            # If same IP announces new MAC within 5 seconds, it's suspicious
-            time_diff = ts - last_ts
-            if time_diff < 5:
-                # Check if we've already alerted on this in last 30 seconds
-                cooldown_key = f"arp_spoof_{src_ip}"
-                cooldown_until = self.alert_cooldowns.get(cooldown_key, 0)
-                if ts >= cooldown_until:
-                    summary = f"Possible ARP spoofing: {src_ip} from {src_mac}"
-                    if is_gratuitous:
-                        summary += " (gratuitous ARP)"
-                    details = {
-                        "ip": src_ip,
-                        "mac": src_mac,
-                        "is_gratuitous": is_gratuitous,
-                        "is_reply": is_reply,
-                    }
-                    self._raise_alert("ARP_SPOOF_SUSPECT", summary, "high", details)
-                    self.alert_cooldowns[cooldown_key] = ts + 30
+        # Skip whitelisted IPs (gateway, trusted servers)
+        if src_ip in self.whitelist:
+            return
         
-        arp_seen[key] = ts
+        # Learn the baseline: first time seeing this IP, record its MAC
+        if src_ip not in self.arp_table:
+            self.arp_table[src_ip] = src_mac
+            return
+        
+        # Check if MAC changed for this IP (ARP spoofing!)
+        expected_mac = self.arp_table[src_ip]
+        if src_mac != expected_mac:
+            # MAC changed! This is ARP spoofing
+            ts = time.time()
+            cooldown_key = f"arp_spoof_{src_ip}"
+            cooldown_until = self.alert_cooldowns.get(cooldown_key, 0)
+            if ts >= cooldown_until:
+                summary = f"ARP SPOOFING DETECTED: {src_ip} changed MAC from {expected_mac} to {src_mac}"
+                details = {
+                    "ip": src_ip,
+                    "original_mac": expected_mac,
+                    "spoofed_mac": src_mac,
+                    "attack_type": "arp_spoof",
+                }
+                self._raise_alert("ARP_SPOOF_DETECTED", summary, "critical", details)
+                self.alert_cooldowns[cooldown_key] = ts + 60
+                self.logger.warning(f"ARP SPOOF: {src_ip} MAC changed {expected_mac} -> {src_mac}")
 
     # ------------------------------------------------------------------
     # Helpers
