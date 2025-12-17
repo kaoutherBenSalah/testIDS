@@ -47,8 +47,12 @@ def require_defender(f):
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if session.get('user_role') != 'DEFENDER':
-            return jsonify({'error': 'Access denied'}), 403
+        user_role = session.get('user_role')
+        user_id = session.get('user_id')
+        logger.info(f"Auth check: user_id={user_id}, role={user_role}")
+        if user_role != 'DEFENDER':
+            logger.warning(f"Access denied: expected DEFENDER, got {user_role}")
+            return jsonify({'error': 'Access denied', 'required_role': 'DEFENDER', 'current_role': user_role}), 403
         return f(*args, **kwargs)
 
     return decorated_function
@@ -139,6 +143,7 @@ def status_ids():
 def ids_overview():
     """Aggregate IDS status, alerts, stats, and a live node inventory."""
     try:
+        logger.info("Fetching IDS overview...")
         nodes, network_range = _get_or_discover_nodes()
         monitor = models.ids_monitor
         status_payload = monitor.get_status() if monitor else {
@@ -149,7 +154,8 @@ def ids_overview():
             'stats': {},
             'alerts': [],
         }
-
+        
+        logger.info(f"Overview: {len(nodes)} nodes, {len(list_ids_alerts())} alerts")
         return jsonify({
             'status': status_payload,
             'alerts': list_ids_alerts(limit=100),
@@ -159,7 +165,7 @@ def ids_overview():
             'last_discovery': _discovery_cache['ts'],
         }), 200
     except Exception as exc:  # noqa: BLE001
-        logger.error(f"Failed to fetch overview: {exc}")
+        logger.error(f"Failed to fetch overview: {exc}", exc_info=True)
         return jsonify({'error': str(exc)}), 500
 
 

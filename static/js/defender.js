@@ -40,7 +40,11 @@ function statusBadgeClass(status) {
 async function fetchOverview() {
     try {
         const res = await fetch('/api/ids/overview');
-        if (!res.ok) throw new Error('overview request failed');
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+            console.error('Overview fetch failed:', res.status, errorData);
+            throw new Error(errorData.error || `HTTP ${res.status}: ${res.statusText}`);
+        }
         const data = await res.json();
         const status = data.status || {};
         const stats = status.stats || {};
@@ -61,9 +65,7 @@ async function fetchOverview() {
         renderNodes(data.nodes || []);
         renderAlerts(data.alerts || []);
     } catch (err) {
-        setMessage(`Status error: ${err.message}`, true);
-    }
-}
+    console.error('fetchOverview error:', err);
 
 function renderNodes(nodes) {
     if (!nodesBody) return;
