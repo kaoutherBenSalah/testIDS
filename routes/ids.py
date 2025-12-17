@@ -143,8 +143,9 @@ def status_ids():
 def ids_overview():
     """Aggregate IDS status, alerts, stats, and a live node inventory."""
     try:
-        logger.info("Fetching IDS overview...")
-        nodes, network_range = _get_or_discover_nodes()
+        logger.info("Fetching IDS overview (fast scan)...")
+        # Use a lightweight discovery (ARP only, no port/service probing) to keep UI fast.
+        nodes, network_range = _get_or_discover_nodes(full_scan=False)
         monitor = models.ids_monitor
         status_payload = monitor.get_status() if monitor else {
             'running': False,
@@ -175,7 +176,8 @@ def ids_discover_now():
     """Force a fresh node discovery and return it."""
     try:
         _discovery_cache['ts'] = 0
-        nodes, network_range = _get_or_discover_nodes(force=True)
+        # Full discovery here (with ports/services) since this is an explicit refresh.
+        nodes, network_range = _get_or_discover_nodes(force=True, full_scan=True)
         return jsonify({'nodes': nodes, 'network_range': network_range}), 200
     except Exception as exc:  # noqa: BLE001
         logger.error(f"Failed to discover nodes: {exc}")
@@ -256,7 +258,7 @@ def _annotate_nodes(hosts, alerts):
     return nodes
 
 
-def _get_or_discover_nodes(force: bool = False):
+def _get_or_discover_nodes(force: bool = False, full_scan: bool = True):
     now = time.time()
     if not force and (now - _discovery_cache['ts']) < _DISCOVERY_TTL and _discovery_cache['nodes']:
         return _discovery_cache['nodes'], _discovery_cache['range']
@@ -266,7 +268,7 @@ def _get_or_discover_nodes(force: bool = False):
     net_range = monitor.network_range if monitor else get_default_network_range(iface) or '192.168.1.0/24'
 
     scanner = NetworkScanner(interface=iface)
-    hosts = scanner.identify_active_machines(net_range, full_scan=True)
+    hosts = scanner.identify_active_machines(net_range, full_scan=full_scan)
     nodes = _annotate_nodes(hosts, ids_alerts)
 
     _discovery_cache['ts'] = now
