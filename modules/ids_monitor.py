@@ -67,6 +67,7 @@ class IDSMonitor:
 
         self.threads = [
             threading.Thread(target=self._arp_scan_loop, name="IDS-ARP", daemon=True),
+            threading.Thread(target=self._arp_spoof_sniff_loop, name="IDS-ARP-SPOOF", daemon=True),
             threading.Thread(target=self._syn_sniff_loop, name="IDS-SYN", daemon=True),
         ]
         for t in self.threads:
@@ -130,6 +131,22 @@ class IDSMonitor:
                 )
             except Exception as exc:  # noqa: BLE001
                 self.logger.error(f"SYN sniff failed: {exc}")
+                time.sleep(2)
+
+    def _arp_spoof_sniff_loop(self):
+        """Detect ARP spoofing by monitoring for gratuitous/unsolicited ARP replies."""
+        arp_seen = {}  # Track {(src_ip, mac): timestamp}
+        while self.running.is_set():
+            try:
+                sniff(
+                    iface=self.interface,
+                    filter="arp",
+                    prn=lambda pkt: self._handle_arp_packet(pkt, arp_seen),
+                    store=False,
+                    timeout=3,
+                )
+            except Exception as exc:  # noqa: BLE001
+                self.logger.error(f"ARP spoof sniff failed: {exc}")
                 time.sleep(2)
 
     # ------------------------------------------------------------------
@@ -200,6 +217,51 @@ class IDSMonitor:
             }
             self._raise_alert("SYN_FLOOD_SUSPECT", summary, "high", details)
             self.alert_cooldowns[dst_ip] = ts + self.syn_window_sec
+
+    def _handle_arp_packet(self, packet, arp_seen):
+        """Detect ARP spoofing via gratuitous/suspicious ARP replies."""
+        if not packet.haslayer(ARP):
+            return
+        
+        arp_layer = packet[ARP]
+        # ARP reply (op=2) or gratuitous (is_at=1, target == sender)
+        is_reply = arp_layer.op == 2
+        is_gratuitous = (
+            arp_layer.op == 2 and 
+            arp_layer.pdst == arp_layer.psrc
+        )
+        
+        if not is_reply:
+            return
+        
+        src_ip = arp_layer.psrc
+        src_mac = arp_layer.hwsrc
+        ts = time.time()
+        key = (src_ip, src_mac)
+        
+        # Track this IP->MAC mapping; if we see it change rapidly, it's spoofing
+        if key in arp_seen:
+            last_ts = arp_seen[key]
+            # If same IP announces new MAC within 5 seconds, it's suspicious
+            time_diff = ts - last_ts
+            if time_diff < 5:
+                # Check if we've already alerted on this in last 30 seconds
+                cooldown_key = f"arp_spoof_{src_ip}"
+                cooldown_until = self.alert_cooldowns.get(cooldown_key, 0)
+                if ts >= cooldown_until:
+                    summary = f"Possible ARP spoofing: {src_ip} from {src_mac}"
+                    if is_gratuitous:
+                        summary += " (gratuitous ARP)"
+                    details = {
+                        "ip": src_ip,
+                        "mac": src_mac,
+                        "is_gratuitous": is_gratuitous,
+                        "is_reply": is_reply,
+                    }
+                    self._raise_alert("ARP_SPOOF_SUSPECT", summary, "high", details)
+                    self.alert_cooldowns[cooldown_key] = ts + 30
+        
+        arp_seen[key] = ts
 
     # ------------------------------------------------------------------
     # Helpers
