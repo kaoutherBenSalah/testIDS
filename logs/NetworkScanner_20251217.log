@@ -1,0 +1,340 @@
+2025-12-17 13:13:31 - NetworkScanner - [INFO] - 🔍 Scanning network: 192.168.1.0/24
+2025-12-17 13:13:31 - NetworkScanner - [INFO] - Sending ARP requests...
+2025-12-17 13:13:34 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.1 (a2:9f:7a:6f:33:d0)
+2025-12-17 13:13:34 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.170 (00:13:db:69:eb:4e)
+2025-12-17 13:13:34 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.192 (a6:1a:7a:8b:3d:94)
+2025-12-17 13:13:34 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.248 (b4:b5:b6:f2:a2:9b)
+2025-12-17 13:13:34 - NetworkScanner - [INFO] - 📊 Scan complete. Found 4 hosts.
+2025-12-17 13:13:34 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.1...
+2025-12-17 13:13:34 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.1...
+2025-12-17 13:13:34 - NetworkScanner - [INFO] - Resolved 192.168.1.1 -> MobileRouter (reverse DNS)
+2025-12-17 13:13:34 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.1 -> MobileRouter
+2025-12-17 13:13:34 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.1
+2025-12-17 13:13:35 - NetworkScanner - [INFO] -   ✅ Port 53 is OPEN
+2025-12-17 13:13:36 - NetworkScanner - [INFO] -   ✅ Port 80 is OPEN
+2025-12-17 13:13:37 - NetworkScanner - [INFO] -   ✅ Port 443 is OPEN
+2025-12-17 13:13:38 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 3 open ports.
+2025-12-17 13:13:41 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.170...
+2025-12-17 13:13:41 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.170...
+2025-12-17 13:13:46 - NetworkScanner - [DEBUG] - Reverse DNS failed for 192.168.1.170: [Errno 11004] host not found
+2025-12-17 13:13:46 - NetworkScanner - [DEBUG] - NetBIOS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:13:46 - NetworkScanner - [DEBUG] - nmap hostname lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:13:46 - NetworkScanner - [DEBUG] - getent lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:13:46 - NetworkScanner - [DEBUG] - ARP cache lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:13:46 - NetworkScanner - [DEBUG] - mDNS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:13:46 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 13:13:46 - NetworkScanner - [INFO] - ⚠️  First attempt failed, retrying 192.168.1.170...
+2025-12-17 13:13:51 - NetworkScanner - [DEBUG] - Reverse DNS failed for 192.168.1.170: [Errno 11004] host not found
+2025-12-17 13:13:51 - NetworkScanner - [DEBUG] - NetBIOS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:13:51 - NetworkScanner - [DEBUG] - nmap hostname lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:13:51 - NetworkScanner - [DEBUG] - getent lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:13:51 - NetworkScanner - [DEBUG] - ARP cache lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:13:51 - NetworkScanner - [DEBUG] - mDNS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:13:51 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 13:13:51 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 13:13:51 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.170
+2025-12-17 13:13:51 - NetworkScanner - [INFO] -   ✅ Port 8080 is OPEN
+2025-12-17 13:13:52 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 1 open ports.
+2025-12-17 13:13:52 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.192...
+2025-12-17 13:13:52 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.192...
+2025-12-17 13:13:52 - NetworkScanner - [INFO] - Resolved 192.168.1.192 -> OPPO-A38 (reverse DNS)
+2025-12-17 13:13:52 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.192 -> OPPO-A38
+2025-12-17 13:13:52 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.192
+2025-12-17 13:13:53 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 0 open ports.
+2025-12-17 13:13:53 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.248...
+2025-12-17 13:13:53 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.248...
+2025-12-17 13:13:53 - NetworkScanner - [INFO] - Resolved 192.168.1.248 -> MONJI (reverse DNS)
+2025-12-17 13:13:53 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.248 -> MONJI
+2025-12-17 13:13:53 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.248
+2025-12-17 13:13:53 - NetworkScanner - [INFO] -   ✅ Port 445 is OPEN
+2025-12-17 13:13:54 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 1 open ports.
+2025-12-17 13:13:55 - NetworkScanner - [INFO] - 🔍 Scanning network: 192.168.1.0/24
+2025-12-17 13:13:55 - NetworkScanner - [INFO] - Sending ARP requests...
+2025-12-17 13:13:57 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.1 (a2:9f:7a:6f:33:d0)
+2025-12-17 13:13:57 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.170 (00:13:db:69:eb:4e)
+2025-12-17 13:13:57 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.192 (a6:1a:7a:8b:3d:94)
+2025-12-17 13:13:57 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.121 (84:76:37:3f:1f:5a)
+2025-12-17 13:13:57 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.248 (b4:b5:b6:f2:a2:9b)
+2025-12-17 13:13:57 - NetworkScanner - [INFO] - 📊 Scan complete. Found 5 hosts.
+2025-12-17 13:13:57 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.1...
+2025-12-17 13:13:57 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.1...
+2025-12-17 13:13:57 - NetworkScanner - [INFO] - Resolved 192.168.1.1 -> MobileRouter (reverse DNS)
+2025-12-17 13:13:57 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.1 -> MobileRouter
+2025-12-17 13:13:57 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.1
+2025-12-17 13:13:59 - NetworkScanner - [INFO] -   ✅ Port 53 is OPEN
+2025-12-17 13:14:01 - NetworkScanner - [INFO] -   ✅ Port 80 is OPEN
+2025-12-17 13:14:02 - NetworkScanner - [INFO] -   ✅ Port 443 is OPEN
+2025-12-17 13:14:03 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 3 open ports.
+2025-12-17 13:14:03 - NetworkScanner - [INFO] - 🔍 Scanning network: 192.168.1.0/24
+2025-12-17 13:14:03 - NetworkScanner - [INFO] - Sending ARP requests...
+2025-12-17 13:16:48 - NetworkScanner - [INFO] - 🔍 Scanning network: 192.168.1.0/24
+2025-12-17 13:16:48 - NetworkScanner - [INFO] - Sending ARP requests...
+2025-12-17 13:16:51 - NetworkScanner - [INFO] - 🔍 Scanning network: 192.168.1.0/24
+2025-12-17 13:16:51 - NetworkScanner - [INFO] - Sending ARP requests...
+2025-12-17 13:16:51 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.1 (a2:9f:7a:6f:33:d0)
+2025-12-17 13:16:51 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.170 (00:13:db:69:eb:4e)
+2025-12-17 13:16:51 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.248 (b4:b5:b6:f2:a2:9b)
+2025-12-17 13:16:51 - NetworkScanner - [INFO] - 📊 Scan complete. Found 3 hosts.
+2025-12-17 13:16:51 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.1...
+2025-12-17 13:16:51 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.1...
+2025-12-17 13:16:51 - NetworkScanner - [INFO] - Resolved 192.168.1.1 -> MobileRouter (reverse DNS)
+2025-12-17 13:16:51 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.1 -> MobileRouter
+2025-12-17 13:16:51 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.1
+2025-12-17 13:16:52 - NetworkScanner - [INFO] -   ✅ Port 53 is OPEN
+2025-12-17 13:16:53 - NetworkScanner - [INFO] -   ✅ Port 80 is OPEN
+2025-12-17 13:16:53 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.1 (a2:9f:7a:6f:33:d0)
+2025-12-17 13:16:53 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.121 (84:76:37:3f:1f:5a)
+2025-12-17 13:16:53 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.170 (00:13:db:69:eb:4e)
+2025-12-17 13:16:53 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.169 (66:5c:cb:46:37:93)
+2025-12-17 13:16:53 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.248 (b4:b5:b6:f2:a2:9b)
+2025-12-17 13:16:53 - NetworkScanner - [INFO] - 📊 Scan complete. Found 5 hosts.
+2025-12-17 13:16:53 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.1...
+2025-12-17 13:16:53 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.1...
+2025-12-17 13:16:53 - NetworkScanner - [INFO] - Resolved 192.168.1.1 -> MobileRouter (reverse DNS)
+2025-12-17 13:16:53 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.1 -> MobileRouter
+2025-12-17 13:16:53 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.1
+2025-12-17 13:16:54 - NetworkScanner - [INFO] -   ✅ Port 443 is OPEN
+2025-12-17 13:16:55 - NetworkScanner - [INFO] -   ✅ Port 53 is OPEN
+2025-12-17 13:16:55 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 3 open ports.
+2025-12-17 13:16:56 - NetworkScanner - [INFO] -   ✅ Port 80 is OPEN
+2025-12-17 13:16:57 - NetworkScanner - [INFO] -   ✅ Port 443 is OPEN
+2025-12-17 13:16:58 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 3 open ports.
+2025-12-17 13:16:58 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.170...
+2025-12-17 13:16:58 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.170...
+2025-12-17 13:17:01 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.121...
+2025-12-17 13:17:01 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.121...
+2025-12-17 13:17:01 - NetworkScanner - [INFO] - Resolved 192.168.1.121 -> HUAWEI_Y7_Prime_2019-9d8d (reverse DNS)
+2025-12-17 13:17:01 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.121 -> HUAWEI_Y7_Prime_2019-9d8d
+2025-12-17 13:17:01 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.121
+2025-12-17 13:17:01 - NetworkScanner - [INFO] - 🔍 Scanning network: 192.168.1.0/24
+2025-12-17 13:17:01 - NetworkScanner - [INFO] - Sending ARP requests...
+2025-12-17 13:17:03 - NetworkScanner - [DEBUG] - Reverse DNS failed for 192.168.1.170: [Errno 11004] host not found
+2025-12-17 13:17:03 - NetworkScanner - [DEBUG] - NetBIOS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:03 - NetworkScanner - [DEBUG] - nmap hostname lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:03 - NetworkScanner - [DEBUG] - getent lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:03 - NetworkScanner - [DEBUG] - ARP cache lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:03 - NetworkScanner - [DEBUG] - mDNS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:03 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 13:17:03 - NetworkScanner - [INFO] - ⚠️  First attempt failed, retrying 192.168.1.170...
+2025-12-17 13:17:04 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.1 (a2:9f:7a:6f:33:d0)
+2025-12-17 13:17:04 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.170 (00:13:db:69:eb:4e)
+2025-12-17 13:17:04 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.121 (84:76:37:3f:1f:5a)
+2025-12-17 13:17:04 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.248 (b4:b5:b6:f2:a2:9b)
+2025-12-17 13:17:04 - NetworkScanner - [INFO] - 📊 Scan complete. Found 4 hosts.
+2025-12-17 13:17:04 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.1...
+2025-12-17 13:17:04 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.1...
+2025-12-17 13:17:04 - NetworkScanner - [INFO] - Resolved 192.168.1.1 -> MobileRouter (reverse DNS)
+2025-12-17 13:17:04 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.1 -> MobileRouter
+2025-12-17 13:17:04 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.1
+2025-12-17 13:17:05 - NetworkScanner - [INFO] -   ✅ Port 53 is OPEN
+2025-12-17 13:17:06 - NetworkScanner - [INFO] -   ✅ Port 80 is OPEN
+2025-12-17 13:17:07 - NetworkScanner - [INFO] -   ✅ Port 443 is OPEN
+2025-12-17 13:17:08 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 3 open ports.
+2025-12-17 13:17:08 - NetworkScanner - [DEBUG] - Reverse DNS failed for 192.168.1.170: [Errno 11004] host not found
+2025-12-17 13:17:08 - NetworkScanner - [DEBUG] - NetBIOS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:08 - NetworkScanner - [DEBUG] - nmap hostname lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:08 - NetworkScanner - [DEBUG] - getent lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:08 - NetworkScanner - [DEBUG] - ARP cache lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:08 - NetworkScanner - [DEBUG] - mDNS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:08 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 13:17:08 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 13:17:08 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.170
+2025-12-17 13:17:09 - NetworkScanner - [INFO] -   ✅ Port 8080 is OPEN
+2025-12-17 13:17:10 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 1 open ports.
+2025-12-17 13:17:10 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.248...
+2025-12-17 13:17:10 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.248...
+2025-12-17 13:17:10 - NetworkScanner - [INFO] - Resolved 192.168.1.248 -> MONJI (reverse DNS)
+2025-12-17 13:17:10 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.248 -> MONJI
+2025-12-17 13:17:10 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.248
+2025-12-17 13:17:10 - NetworkScanner - [INFO] -   ✅ Port 445 is OPEN
+2025-12-17 13:17:11 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 1 open ports.
+2025-12-17 13:17:11 - NetworkScanner - [INFO] - 🔍 Scanning network: 192.168.1.0/24
+2025-12-17 13:17:11 - NetworkScanner - [INFO] - Sending ARP requests...
+2025-12-17 13:17:11 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.170...
+2025-12-17 13:17:11 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.170...
+2025-12-17 13:17:13 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.1 (a2:9f:7a:6f:33:d0)
+2025-12-17 13:17:13 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.121 (84:76:37:3f:1f:5a)
+2025-12-17 13:17:13 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.170 (00:13:db:69:eb:4e)
+2025-12-17 13:17:13 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.169 (66:5c:cb:46:37:93)
+2025-12-17 13:17:13 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.248 (b4:b5:b6:f2:a2:9b)
+2025-12-17 13:17:13 - NetworkScanner - [INFO] - 📊 Scan complete. Found 5 hosts.
+2025-12-17 13:17:13 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.1...
+2025-12-17 13:17:13 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.1...
+2025-12-17 13:17:13 - NetworkScanner - [INFO] - Resolved 192.168.1.1 -> MobileRouter (reverse DNS)
+2025-12-17 13:17:13 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.1 -> MobileRouter
+2025-12-17 13:17:13 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.1
+2025-12-17 13:17:14 - NetworkScanner - [INFO] -   ✅ Port 53 is OPEN
+2025-12-17 13:17:15 - NetworkScanner - [INFO] -   ✅ Port 80 is OPEN
+2025-12-17 13:17:16 - NetworkScanner - [DEBUG] - Reverse DNS failed for 192.168.1.170: [Errno 11004] host not found
+2025-12-17 13:17:16 - NetworkScanner - [DEBUG] - NetBIOS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:16 - NetworkScanner - [DEBUG] - nmap hostname lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:16 - NetworkScanner - [DEBUG] - getent lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:16 - NetworkScanner - [DEBUG] - ARP cache lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:16 - NetworkScanner - [DEBUG] - mDNS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:16 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 0 open ports.
+2025-12-17 13:17:16 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 13:17:16 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.170...
+2025-12-17 13:17:16 - NetworkScanner - [INFO] - ⚠️  First attempt failed, retrying 192.168.1.170...
+2025-12-17 13:17:16 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.170...
+2025-12-17 13:17:16 - NetworkScanner - [INFO] -   ✅ Port 443 is OPEN
+2025-12-17 13:17:18 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 3 open ports.
+2025-12-17 13:17:19 - NetworkScanner - [INFO] - 🔍 Scanning network: 192.168.1.0/24
+2025-12-17 13:17:19 - NetworkScanner - [INFO] - Sending ARP requests...
+2025-12-17 13:17:19 - NetworkScanner - [INFO] - 🔍 Scanning network: 192.168.1.0/24
+2025-12-17 13:17:19 - NetworkScanner - [INFO] - Sending ARP requests...
+2025-12-17 13:17:21 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.121...
+2025-12-17 13:17:21 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.121...
+2025-12-17 13:17:21 - NetworkScanner - [INFO] - Resolved 192.168.1.121 -> HUAWEI_Y7_Prime_2019-9d8d (reverse DNS)
+2025-12-17 13:17:21 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.121 -> HUAWEI_Y7_Prime_2019-9d8d
+2025-12-17 13:17:21 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.121
+2025-12-17 13:17:21 - NetworkScanner - [DEBUG] - Reverse DNS failed for 192.168.1.170: [Errno 11004] host not found
+2025-12-17 13:17:21 - NetworkScanner - [DEBUG] - NetBIOS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:21 - NetworkScanner - [DEBUG] - nmap hostname lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:21 - NetworkScanner - [DEBUG] - getent lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:21 - NetworkScanner - [DEBUG] - ARP cache lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:21 - NetworkScanner - [DEBUG] - mDNS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:21 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 13:17:21 - NetworkScanner - [INFO] - ⚠️  First attempt failed, retrying 192.168.1.170...
+2025-12-17 13:17:21 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.1 (a2:9f:7a:6f:33:d0)
+2025-12-17 13:17:21 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.170 (00:13:db:69:eb:4e)
+2025-12-17 13:17:21 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.248 (b4:b5:b6:f2:a2:9b)
+2025-12-17 13:17:21 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.121 (84:76:37:3f:1f:5a)
+2025-12-17 13:17:21 - NetworkScanner - [INFO] - 📊 Scan complete. Found 4 hosts.
+2025-12-17 13:17:21 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.1...
+2025-12-17 13:17:21 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.1...
+2025-12-17 13:17:21 - NetworkScanner - [INFO] - Resolved 192.168.1.1 -> MobileRouter (reverse DNS)
+2025-12-17 13:17:21 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.1 -> MobileRouter
+2025-12-17 13:17:21 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.1
+2025-12-17 13:17:21 - NetworkScanner - [DEBUG] - Reverse DNS failed for 192.168.1.170: [Errno 11004] host not found
+2025-12-17 13:17:21 - NetworkScanner - [DEBUG] - NetBIOS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:21 - NetworkScanner - [DEBUG] - nmap hostname lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:21 - NetworkScanner - [DEBUG] - getent lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:21 - NetworkScanner - [DEBUG] - ARP cache lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:21 - NetworkScanner - [DEBUG] - mDNS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:21 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 13:17:21 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 13:17:21 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.170
+2025-12-17 13:17:21 - NetworkScanner - [INFO] -   ✅ Port 8080 is OPEN
+2025-12-17 13:17:22 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.1 (a2:9f:7a:6f:33:d0)
+2025-12-17 13:17:22 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.121 (84:76:37:3f:1f:5a)
+2025-12-17 13:17:22 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.170 (00:13:db:69:eb:4e)
+2025-12-17 13:17:22 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.248 (b4:b5:b6:f2:a2:9b)
+2025-12-17 13:17:22 - NetworkScanner - [INFO] - 📊 Scan complete. Found 4 hosts.
+2025-12-17 13:17:22 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.1...
+2025-12-17 13:17:22 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.1...
+2025-12-17 13:17:22 - NetworkScanner - [INFO] - Resolved 192.168.1.1 -> MobileRouter (reverse DNS)
+2025-12-17 13:17:22 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.1 -> MobileRouter
+2025-12-17 13:17:22 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.1
+2025-12-17 13:17:22 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 1 open ports.
+2025-12-17 13:17:23 - NetworkScanner - [INFO] - 🔍 Scanning network: 192.168.1.0/24
+2025-12-17 13:17:23 - NetworkScanner - [INFO] - Sending ARP requests...
+2025-12-17 13:17:24 - NetworkScanner - [INFO] -   ✅ Port 53 is OPEN
+2025-12-17 13:17:24 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.121...
+2025-12-17 13:17:24 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.121...
+2025-12-17 13:17:24 - NetworkScanner - [INFO] - Resolved 192.168.1.121 -> HUAWEI_Y7_Prime_2019-9d8d (reverse DNS)
+2025-12-17 13:17:24 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.121 -> HUAWEI_Y7_Prime_2019-9d8d
+2025-12-17 13:17:24 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.121
+2025-12-17 13:17:26 - NetworkScanner - [INFO] -   ✅ Port 80 is OPEN
+2025-12-17 13:17:26 - NetworkScanner - [INFO] -   ✅ Port 80 is OPEN
+2025-12-17 13:17:26 - NetworkScanner - [DEBUG] - Reverse DNS failed for 192.168.1.170: [Errno 11004] host not found
+2025-12-17 13:17:26 - NetworkScanner - [DEBUG] - NetBIOS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:26 - NetworkScanner - [DEBUG] - nmap hostname lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:26 - NetworkScanner - [DEBUG] - getent lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:26 - NetworkScanner - [DEBUG] - ARP cache lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:26 - NetworkScanner - [DEBUG] - mDNS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:26 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 13:17:26 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 13:17:26 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.170
+2025-12-17 13:17:26 - NetworkScanner - [INFO] -   ✅ Port 8080 is OPEN
+2025-12-17 13:17:27 - NetworkScanner - [INFO] -   ✅ Port 443 is OPEN
+2025-12-17 13:17:27 - NetworkScanner - [INFO] -   ✅ Port 443 is OPEN
+2025-12-17 13:17:27 - NetworkScanner - [INFO] - 🔍 Scanning network: 192.168.1.0/24
+2025-12-17 13:17:27 - NetworkScanner - [INFO] - Sending ARP requests...
+2025-12-17 13:17:27 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.1 (a2:9f:7a:6f:33:d0)
+2025-12-17 13:17:27 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.121 (84:76:37:3f:1f:5a)
+2025-12-17 13:17:27 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.170 (00:13:db:69:eb:4e)
+2025-12-17 13:17:27 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.248 (b4:b5:b6:f2:a2:9b)
+2025-12-17 13:17:27 - NetworkScanner - [INFO] - 📊 Scan complete. Found 4 hosts.
+2025-12-17 13:17:27 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.1...
+2025-12-17 13:17:27 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.1...
+2025-12-17 13:17:27 - NetworkScanner - [INFO] - Resolved 192.168.1.1 -> MobileRouter (reverse DNS)
+2025-12-17 13:17:27 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.1 -> MobileRouter
+2025-12-17 13:17:27 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.1
+2025-12-17 13:17:27 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 1 open ports.
+2025-12-17 13:17:28 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.169...
+2025-12-17 13:17:28 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.169...
+2025-12-17 13:17:28 - NetworkScanner - [INFO] - Resolved 192.168.1.169 -> HUAWEI_MatePad_T-68733b18 (reverse DNS)
+2025-12-17 13:17:28 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.169 -> HUAWEI_MatePad_T-68733b18
+2025-12-17 13:17:28 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.169
+2025-12-17 13:17:28 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 2 open ports.
+2025-12-17 13:17:28 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 3 open ports.
+2025-12-17 13:17:28 - NetworkScanner - [INFO] -   ✅ Port 53 is OPEN
+2025-12-17 13:17:29 - NetworkScanner - [INFO] -   ✅ Port 80 is OPEN
+2025-12-17 13:17:29 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.1 (a2:9f:7a:6f:33:d0)
+2025-12-17 13:17:29 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.121 (84:76:37:3f:1f:5a)
+2025-12-17 13:17:29 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.121...
+2025-12-17 13:17:29 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.170 (00:13:db:69:eb:4e)
+2025-12-17 13:17:29 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.121...
+2025-12-17 13:17:29 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.169 (66:5c:cb:46:37:93)
+2025-12-17 13:17:29 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.248 (b4:b5:b6:f2:a2:9b)
+2025-12-17 13:17:29 - NetworkScanner - [INFO] - 📊 Scan complete. Found 5 hosts.
+2025-12-17 13:17:29 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.1...
+2025-12-17 13:17:29 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.1...
+2025-12-17 13:17:29 - NetworkScanner - [INFO] - Resolved 192.168.1.121 -> HUAWEI_Y7_Prime_2019-9d8d (reverse DNS)
+2025-12-17 13:17:29 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.121 -> HUAWEI_Y7_Prime_2019-9d8d
+2025-12-17 13:17:29 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.121
+2025-12-17 13:17:30 - NetworkScanner - [INFO] - Resolved 192.168.1.1 -> MobileRouter (reverse DNS)
+2025-12-17 13:17:30 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.1 -> MobileRouter
+2025-12-17 13:17:30 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.1
+2025-12-17 13:17:30 - NetworkScanner - [INFO] -   ✅ Port 443 is OPEN
+2025-12-17 13:17:31 - NetworkScanner - [INFO] -   ✅ Port 53 is OPEN
+2025-12-17 13:17:31 - NetworkScanner - [INFO] - 🔍 Scanning network: 192.168.1.0/24
+2025-12-17 13:17:31 - NetworkScanner - [INFO] - Sending ARP requests...
+2025-12-17 13:17:31 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.170...
+2025-12-17 13:17:31 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.170...
+2025-12-17 13:17:31 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 3 open ports.
+2025-12-17 13:17:32 - NetworkScanner - [INFO] -   ✅ Port 80 is OPEN
+2025-12-17 13:17:33 - NetworkScanner - [INFO] -   ✅ Port 443 is OPEN
+2025-12-17 13:17:33 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.1 (a2:9f:7a:6f:33:d0)
+2025-12-17 13:17:33 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.121 (84:76:37:3f:1f:5a)
+2025-12-17 13:17:33 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.170 (00:13:db:69:eb:4e)
+2025-12-17 13:17:33 - NetworkScanner - [INFO] -   ✅ Found: 192.168.1.248 (b4:b5:b6:f2:a2:9b)
+2025-12-17 13:17:33 - NetworkScanner - [INFO] - 📊 Scan complete. Found 4 hosts.
+2025-12-17 13:17:33 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.1...
+2025-12-17 13:17:33 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.1...
+2025-12-17 13:17:33 - NetworkScanner - [INFO] - Resolved 192.168.1.1 -> MobileRouter (reverse DNS)
+2025-12-17 13:17:33 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.1 -> MobileRouter
+2025-12-17 13:17:33 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.1
+2025-12-17 13:17:34 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 3 open ports.
+2025-12-17 13:17:34 - NetworkScanner - [INFO] -   ✅ Port 53 is OPEN
+2025-12-17 13:17:35 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.121...
+2025-12-17 13:17:35 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.121...
+2025-12-17 13:17:35 - NetworkScanner - [INFO] - Resolved 192.168.1.121 -> HUAWEI_Y7_Prime_2019-9d8d (reverse DNS)
+2025-12-17 13:17:35 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.121 -> HUAWEI_Y7_Prime_2019-9d8d
+2025-12-17 13:17:35 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.121
+2025-12-17 13:17:35 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 0 open ports.
+2025-12-17 13:17:35 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.170...
+2025-12-17 13:17:35 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.170...
+2025-12-17 13:17:36 - NetworkScanner - [INFO] -   ✅ Port 80 is OPEN
+2025-12-17 13:17:36 - NetworkScanner - [DEBUG] - Reverse DNS failed for 192.168.1.170: [Errno 11004] host not found
+2025-12-17 13:17:36 - NetworkScanner - [DEBUG] - NetBIOS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:36 - NetworkScanner - [DEBUG] - nmap hostname lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:36 - NetworkScanner - [DEBUG] - getent lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:36 - NetworkScanner - [DEBUG] - ARP cache lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:36 - NetworkScanner - [DEBUG] - mDNS lookup failed: stdout and stderr arguments may not be used with capture_output.
+2025-12-17 13:17:36 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 13:17:36 - NetworkScanner - [INFO] - ⚠️  First attempt failed, retrying 192.168.1.170...
+2025-12-17 13:17:37 - NetworkScanner - [INFO] -   ✅ Port 443 is OPEN
+2025-12-17 13:17:37 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.121...
+2025-12-17 13:17:37 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.121...
+2025-12-17 13:17:37 - NetworkScanner - [INFO] - Resolved 192.168.1.121 -> HUAWEI_Y7_Prime_2019-9d8d (reverse DNS)
+2025-12-17 13:17:37 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.121 -> HUAWEI_Y7_Prime_2019-9d8d
+2025-12-17 13:17:37 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.121
+2025-12-17 13:17:38 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 3 open ports.
+2025-12-17 13:17:39 - NetworkScanner - [INFO] - 📊 Port scan complete. Found 0 open ports.
+2025-12-17 13:17:39 - NetworkScanner - [INFO] - 🔍 Gathering info for 192.168.1.248...
+2025-12-17 13:17:39 - NetworkScanner - [INFO] - 🔎 Resolving hostname for 192.168.1.248...
+2025-12-17 13:17:39 - NetworkScanner - [INFO] - Resolved 192.168.1.248 -> MONJI (reverse DNS)
+2025-12-17 13:17:39 - NetworkScanner - [INFO] - ✅ Resolved 192.168.1.248 -> MONJI
+2025-12-17 13:17:39 - NetworkScanner - [INFO] - 🔍 Scanning ports on 192.168.1.248
+2025-12-17 13:17:39 - NetworkScanner - [INFO] -   ✅ Port 445 is OPEN

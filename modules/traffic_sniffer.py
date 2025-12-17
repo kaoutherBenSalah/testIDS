@@ -71,7 +71,16 @@ class TrafficSniffer:
         
         self.logger.info(f"🔍 Traffic Sniffer initialized on {interface or 'default interface'}")
     
-    def start_sniffing(self, filter_str=None, count=0, prn_callback=None):
+    def start_sniffing(
+        self,
+        filter_str=None,
+        count=0,
+        prn_callback=None,
+        interface=None,
+        promisc=False,
+        timeout=None,
+        pcap_file=None,
+    ):
         """
         Start packet sniffing
         
@@ -79,6 +88,10 @@ class TrafficSniffer:
             filter_str (str): BPF filter (e.g., 'tcp port 80', 'host 192.168.1.1')
             count (int): Number of packets to capture (0 = infinite)
             prn_callback (function): Callback function for each packet
+            interface (str): Interface override (defaults to self.interface)
+            promisc (bool): Enable promiscuous capture
+            timeout (int|float|None): Stop after N seconds (None = infinite)
+            pcap_file (str|None): If set, write packets to this PCAP file
         """
         if self.is_sniffing:
             self.logger.warning("⚠️  Already sniffing!")
@@ -91,16 +104,28 @@ class TrafficSniffer:
         
         if prn_callback:
             self.packet_callback = prn_callback
+
+        # Allow on-demand interface override
+        if interface:
+            self.interface = interface
         
         self.logger.info(f"🚀 Starting packet capture...")
         self.logger.info(f"   Filter: {filter_str or 'None (all traffic)'}")
         self.logger.info(f"   Count: {count if count > 0 else 'Unlimited'}")
+        self.logger.info(f"   Promisc: {'on' if promisc else 'off'} | Timeout: {timeout or 'none'}")
+
+        # Enable PCAP writing when requested
+        if pcap_file:
+            try:
+                self.enable_pcap_logging(pcap_file)
+            except Exception as e:
+                self.logger.error(f"❌ Failed to enable PCAP logging: {e}")
         
         try:
             # Start sniffing in a separate thread
             sniff_thread = threading.Thread(
                 target=self._sniff_thread,
-                args=(filter_str, count),
+                args=(filter_str, count, promisc, timeout),
                 daemon=True
             )
             sniff_thread.start()
@@ -124,10 +149,8 @@ class TrafficSniffer:
             self.pcap_writer.close()
             self.pcap_writer = None
     
-    def _sniff_thread(self, filter_str, count):
-        """
-        Sniffing thread (runs in background)
-        """
+    def _sniff_thread(self, filter_str, count, promisc, timeout):
+        """Sniffing thread (runs in background)."""
         try:
             sniff(
                 iface=self.interface,
@@ -135,7 +158,9 @@ class TrafficSniffer:
                 prn=self._process_packet,
                 count=count,
                 store=False,
-                stop_filter=lambda x: not self.is_sniffing
+                promisc=promisc,
+                timeout=timeout,
+                stop_filter=lambda _: not self.is_sniffing,
             )
         except Exception as e:
             self.logger.error(f"❌ Sniffing error: {e}")

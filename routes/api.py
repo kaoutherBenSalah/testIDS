@@ -152,6 +152,11 @@ def start_sniffer():
         data = request.get_json()
         bpf_filter = data.get('filter')
         interface = data.get('interface')
+        packet_limit = int(data.get('count') or 0)
+        promisc = bool(data.get('promisc'))
+        timeout = data.get('timeout')
+        timeout = float(timeout) if timeout else None
+        pcap_file = data.get('pcap_file')
         
         # Create sniffer and attach callback to keep packets in memory
         sniffer = TrafficSniffer(interface=interface)
@@ -159,7 +164,14 @@ def start_sniffer():
         
         def run_sniff():
             try:
-                sniffer.start_sniffing(filter_str=bpf_filter)
+                sniffer.start_sniffing(
+                    filter_str=bpf_filter,
+                    count=packet_limit,
+                    interface=interface,
+                    promisc=promisc,
+                    timeout=timeout,
+                    pcap_file=pcap_file,
+                )
             except Exception as e:
                 print(f"Sniffer Error: {e}")
         
@@ -170,6 +182,9 @@ def start_sniffer():
         active_sniffers[sniffer_id] = {
             'object': sniffer,
             'filter': bpf_filter,
+            'interface': interface,
+            'count': packet_limit,
+            'promisc': promisc,
             'packets': [],
             'status': 'capturing'
         }

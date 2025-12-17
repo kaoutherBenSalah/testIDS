@@ -6,6 +6,7 @@ Accessible to DEFENDER role.
 from flask import Blueprint, jsonify, request, session
 from functools import wraps
 from datetime import datetime
+import time
 import sys
 from pathlib import Path
 
@@ -13,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import models
 from modules.ids_monitor import IDSMonitor
+from modules.network_scanner import NetworkScanner
 from models import (
     register_ids_monitor,
     record_ids_alert,
@@ -20,11 +22,20 @@ from models import (
     ack_ids_alert,
     request_block,
     ids_stats,
+    ids_alerts,
 )
 from utils.logger import get_logger
+from utils.network_utils import get_default_network_range
 
 ids_bp = Blueprint('ids', __name__)
 logger = get_logger("IDSRoutes")
+
+_discovery_cache = {
+    'ts': 0.0,
+    'nodes': [],
+    'range': None,
+}
+_DISCOVERY_TTL = 30
 
 
 # ============================================================================
@@ -123,6 +134,48 @@ def status_ids():
         return jsonify({'error': str(exc)}), 500
 
 
+@ids_bp.route('/ids/overview', methods=['GET'])
+@require_defender
+def ids_overview():
+    """Aggregate IDS status, alerts, stats, and a live node inventory."""
+    try:
+        nodes, network_range = _get_or_discover_nodes()
+        monitor = models.ids_monitor
+        status_payload = monitor.get_status() if monitor else {
+            'running': False,
+            'interface': None,
+            'network_range': network_range,
+            'config': {},
+            'stats': {},
+            'alerts': [],
+        }
+
+        return jsonify({
+            'status': status_payload,
+            'alerts': list_ids_alerts(limit=100),
+            'stats': ids_stats,
+            'nodes': nodes,
+            'network_range': network_range,
+            'last_discovery': _discovery_cache['ts'],
+        }), 200
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Failed to fetch overview: {exc}")
+        return jsonify({'error': str(exc)}), 500
+
+
+@ids_bp.route('/ids/discover', methods=['POST'])
+@require_defender
+def ids_discover_now():
+    """Force a fresh node discovery and return it."""
+    try:
+        _discovery_cache['ts'] = 0
+        nodes, network_range = _get_or_discover_nodes(force=True)
+        return jsonify({'nodes': nodes, 'network_range': network_range}), 200
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Failed to discover nodes: {exc}")
+        return jsonify({'error': str(exc)}), 500
+
+
 # ============================================================================
 # ALERT ACTIONS
 # ============================================================================
@@ -163,3 +216,54 @@ def block_entity():
     except Exception as exc:  # noqa: BLE001
         logger.error(f"Failed to record block: {exc}")
         return jsonify({'error': str(exc)}), 500
+
+
+# ============================================================================
+# NODE DISCOVERY HELPERS
+# ============================================================================
+
+
+def _node_status(node, alerts):
+    ip = node.get('ip') if isinstance(node, dict) else None
+    if not ip:
+        return 'danger'
+
+    # Mark as danger if any alert references this IP
+    for alert in alerts:
+        details = alert.get('details', {}) if isinstance(alert, dict) else {}
+        if ip in [details.get('dst_ip'), details.get('ip')]:
+            return 'danger'
+
+    hostname = node.get('hostname') if isinstance(node, dict) else None
+    if not hostname:
+        return 'danger'
+
+    return 'safe'
+
+
+def _annotate_nodes(hosts, alerts):
+    nodes = []
+    for host in hosts:
+        data = host.to_dict() if hasattr(host, 'to_dict') else dict(host)
+        data['status'] = _node_status(data, alerts)
+        nodes.append(data)
+    return nodes
+
+
+def _get_or_discover_nodes(force: bool = False):
+    now = time.time()
+    if not force and (now - _discovery_cache['ts']) < _DISCOVERY_TTL and _discovery_cache['nodes']:
+        return _discovery_cache['nodes'], _discovery_cache['range']
+
+    monitor = models.ids_monitor
+    iface = monitor.interface if monitor else None
+    net_range = monitor.network_range if monitor else get_default_network_range(iface) or '192.168.1.0/24'
+
+    scanner = NetworkScanner(interface=iface)
+    hosts = scanner.identify_active_machines(net_range, full_scan=True)
+    nodes = _annotate_nodes(hosts, ids_alerts)
+
+    _discovery_cache['ts'] = now
+    _discovery_cache['nodes'] = nodes
+    _discovery_cache['range'] = net_range
+    return nodes, net_range

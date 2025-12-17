@@ -1,0 +1,4 @@
+2025-12-17 13:16:54 - IDSMonitor - [DEBUG] - Sending ARP probe on 192.168.1.0/24 via auto
+2025-12-17 13:16:54 - IDSMonitor - [INFO] - IDS monitor started (iface=auto, range=192.168.1.0/24, arp_interval=20s, syn_threshold=150/10s)
+2025-12-17 13:17:18 - IDSMonitor - [DEBUG] - Sending ARP probe on 192.168.1.0/24 via auto
+2025-12-17 13:17:30 - IDSMonitor - [INFO] - IDS monitor stopped

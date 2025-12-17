@@ -1,0 +1,10 @@
+{
+  "attacker": {
+    "password": "scrypt:32768:8:1$KLK2hypXKjVPg8ci$9995505048d9501101f7e4b304fc46e135d32f260a78c19309b8ad94684bf05772ab96970d13e09eea446ed1357725c7abff4951b085a35f454276053e887bf4",
+    "role": "ATTACKER"
+  },
+  "defender": {
+    "password": "scrypt:32768:8:1$4ExiCtG3Q2EFjozb$fe12373691b17ae199d8cd0452c0686bc513b78da3d424eb66c08a2f7f51f73be37b0609ca2712cdda6508a363c1426fc723aa7376ec420418c5d523a8679980",
+    "role": "DEFENDER"
+  }
+}

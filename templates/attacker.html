@@ -31,8 +31,8 @@
                     <input type="text" id="scan-range" placeholder="auto" />
                 </div>
                 <div class="form-group">
-                    <label>Full scan (all ports)</label>
-                    <input type="checkbox" id="full-scan" />
+                    <label>Full scan (hostnames + services)</label>
+                    <input type="checkbox" id="full-scan" checked />
                 </div>
             </div>
             <div class="button-row">
@@ -89,8 +89,12 @@
                     <input type="number" id="syn-rate" value="0" min="0" />
                 </div>
                 <div class="form-group">
-                    <label>Spoof Source IPs from scan</label>
+                    <label>Spoof source IPs from scan</label>
                     <input type="checkbox" id="syn-spoof" />
+                </div>
+                <div class="form-group">
+                    <label>Random spoof bots (count)</label>
+                    <input type="number" id="syn-random-bots" value="200" min="0" />
                 </div>
             </div>
             <div class="button-row">
@@ -118,6 +122,10 @@
         <div class="card">
             <div class="form-grid">
                 <div class="form-group">
+                    <label>Interface</label>
+                    <select id="sniffer-interface"></select>
+                </div>
+                <div class="form-group">
                     <label>Preset</label>
                     <select id="sniffer-preset" onchange="onSnifferPresetChange()">
                         <option value="tcp">TCP</option>
@@ -126,12 +134,30 @@
                         <option value="tcp port 443">HTTPS</option>
                         <option value="dst port 53">DNS</option>
                         <option value="port 21">FTP</option>
+                        <option value="tcp port 22">SSH</option>
+                        <option value="arp">ARP</option>
                         <option value="custom">Custom</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Filter</label>
                     <input type="text" id="sniffer-filter" value="tcp" />
+                </div>
+                <div class="form-group">
+                    <label>Packet limit (0 = infinite)</label>
+                    <input type="number" id="sniffer-count" value="0" min="0" />
+                </div>
+                <div class="form-group">
+                    <label>Timeout (seconds)</label>
+                    <input type="number" id="sniffer-timeout" value="0" min="0" />
+                </div>
+                <div class="form-group">
+                    <label>Promiscuous</label>
+                    <input type="checkbox" id="sniffer-promisc" />
+                </div>
+                <div class="form-group">
+                    <label>Save PCAP</label>
+                    <input type="checkbox" id="sniffer-pcap" />
                 </div>
             </div>
             <div class="button-row">
@@ -176,9 +202,11 @@
             defaultRange = data.default_range || '';
             populateInterfaceSelect('scan-interface');
             populateInterfaceSelect('arp-interface');
+            populateInterfaceSelect('sniffer-interface');
             if (defaultRange) {
                 document.getElementById('scan-range').value = defaultRange;
             }
+            autoFillRange();
         } catch (e) {
             console.error('Interfaces error', e);
         }
@@ -195,6 +223,17 @@
             opt.textContent = label;
             select.appendChild(opt);
         });
+    }
+
+    function autoFillRange() {
+        const scanSelect = document.getElementById('scan-interface');
+        if (!scanSelect) return;
+        const chosen = interfacesCache.find(i => i.name === scanSelect.value);
+        if (chosen && chosen.cidr) {
+            document.getElementById('scan-range').value = chosen.cidr;
+        } else if (defaultRange) {
+            document.getElementById('scan-range').value = defaultRange;
+        }
     }
 
     async function startARPAttack() {
@@ -269,6 +308,7 @@
         const threads = parseInt(document.getElementById('syn-threads').value || '10');
         const rate = parseInt(document.getElementById('syn-rate').value || '0');
         const useSpoof = document.getElementById('syn-spoof').checked;
+        const randomBots = parseInt(document.getElementById('syn-random-bots').value || '0');
 
         if (!targetsSel.length) {
             alert('Select at least one target from scan results!');
@@ -280,7 +320,8 @@
             target_ports: ports,
             threads: threads,
             rate_limit_pps: rate > 0 ? rate : null,
-            spoof_ips: useSpoof ? scannedHosts.map(h => h.ip) : []
+            spoof_ips: useSpoof ? scannedHosts.map(h => h.ip) : [],
+            random_spoof_count: randomBots
         };
 
         const spoofMsg = useSpoof ? ` with ${scannedHosts.length} spoofed sources` : '';
@@ -376,8 +417,16 @@
     async function startScan() {
         const iface = document.getElementById('scan-interface').value;
         const rangeField = document.getElementById('scan-range');
-        const range = rangeField.value || defaultRange || '';
+        let range = rangeField.value || defaultRange || '';
         const fullScan = document.getElementById('full-scan').checked;
+
+        if (!range) {
+            const chosen = interfacesCache.find(i => i.name === iface);
+            if (chosen && chosen.cidr) {
+                range = chosen.cidr;
+                rangeField.value = range;
+            }
+        }
 
         if (scanPollInterval) {
             clearInterval(scanPollInterval);
@@ -443,7 +492,7 @@
             scannedHosts = data.hosts || [];
             
             // Show live progress
-            if (data.status === 'running') {
+            if (data.status === 'running' || data.status === 'in_progress') {
                 const resultsDiv = document.getElementById('scan-results');
                 const progressHtml = `<div style="color: #0ff; padding: 1rem;">
                     <div style="font-size: 1.1rem; margin-bottom: 0.5rem;">🔍 SCANNING IN PROGRESS...</div>
@@ -580,12 +629,12 @@
 
         scannedHosts.forEach(h => {
             // Create better label for dropdown
-            let displayName = h.hostname || h.ip;
+            let displayName = h.hostname ? `${h.hostname} (${h.ip})` : `Unknown (${h.ip})`;
             if (!h.hostname && h.services && h.services.length > 0) {
                 const svc = h.services[0].service;
-                displayName = `[${svc}] ${h.ip}`;
+                displayName = `[${svc}] (${h.ip})`;
             }
-            const label = `${displayName} | ${h.mac}`;
+            const label = `${displayName} | ${h.mac || 'no-mac'}`;
             const value = `${h.ip}|${h.mac}`;
             
             if (victimSelect) {
@@ -605,6 +654,11 @@
 
     async function startSniffer() {
         const filter = document.getElementById('sniffer-filter').value;
+        const iface = document.getElementById('sniffer-interface').value;
+        const count = parseInt(document.getElementById('sniffer-count').value || '0');
+        const timeout = parseInt(document.getElementById('sniffer-timeout').value || '0');
+        const promisc = document.getElementById('sniffer-promisc').checked;
+        const pcap = document.getElementById('sniffer-pcap').checked;
 
         if (snifferPollInterval) {
             clearInterval(snifferPollInterval);
@@ -615,7 +669,14 @@
             const res = await fetch('/api/sniff/start', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filter })
+                body: JSON.stringify({
+                    filter,
+                    interface: iface,
+                    count,
+                    timeout,
+                    promisc,
+                    pcap_file: pcap ? `capture_${Date.now()}.pcap` : null
+                })
             });
 
             const data = await res.json();
@@ -713,6 +774,8 @@
         setInterval(refreshAttackStats, 5000);
         loadInterfaces();
         onSnifferPresetChange();
+        const scanSelect = document.getElementById('scan-interface');
+        if (scanSelect) scanSelect.addEventListener('change', autoFillRange);
     });
 </script>
 {% endblock %}
