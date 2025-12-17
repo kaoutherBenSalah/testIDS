@@ -50,11 +50,15 @@ This file summarizes how the backend works, where key functions live, and how re
 ## IDS API (routes/ids.py)
 - Role gate: `require_defender` (session `user_role == DEFENDER`).
 - Endpoints:
-  - `POST /api/ids/start`: start IDS monitor (configurable interface, CIDR, ARP interval, SYN thresholds/window, unique sources gate).
+  - `POST /api/ids/start`: start IDS monitor (configurable interface, CIDR, ARP interval, SYN thresholds/window, unique sources gate). Supports `auto_block` and `auto_block_top_n`.
   - `POST /api/ids/stop`: stop monitor threads.
-  - `GET /api/ids/status`: running/config/stats plus last 50 alerts.
+  - `GET /api/ids/status`: running/config/stats plus last 50 alerts and `whitelist`.
+  - `GET /api/ids/overview`: aggregate status, alerts, stats, nodes, and `whitelist`.
   - `POST /api/ids/alerts/<id>/ack`: mark alert acknowledged.
-  - `POST /api/ids/block`: record defender block/stop intent (no packet enforcement yet; audit only).
+  - `POST /api/ids/block`: block an IP via firewall (records result and updates stats).
+  - `GET /api/ids/whitelist`: list whitelist entries.
+  - `POST /api/ids/whitelist` `{ip}`: add IP to whitelist.
+  - `DELETE /api/ids/whitelist` `{ip}`: remove IP from whitelist.
 
 ## Modules (core logic)
 
@@ -83,8 +87,10 @@ This file summarizes how the backend works, where key functions live, and how re
 ### modules/ids_monitor.py (IDSMonitor)
 - Threads: ARP scan loop + SYN sniff loop.
 - ARP anomaly detection: ARP sweep over configured CIDR → MAC→IP table → raises `ARP_ANOMALY` when a MAC maps to multiple IPs.
-- SYN heuristic: sniffs `tcp[tcpflags] & tcp-syn != 0`, keeps per-destination sliding window; raises `SYN_FLOOD_SUSPECT` if `syn_threshold` and `syn_unique_sources` are exceeded within `syn_window_sec`.
-- Alerts: appended in-memory (max 200), logged through `SecurityLogger.attack_detected`, forwarded to `models.record_ids_alert` sink. Includes id/type/severity/summary/details/timestamp/action placeholder.
+- SYN heuristic: sniffs `tcp[tcpflags] & tcp-syn != 0`, keeps per-destination sliding window; raises `SYN_FLOOD_DETECTED` if `syn_threshold` and `syn_unique_sources` are exceeded within `syn_window_sec`.
+- Alerts: appended in-memory (max 200), logged through `SecurityLogger.attack_detected`, forwarded to `models.record_ids_alert` sink. Includes id/type/severity/summary/details/timestamp/action placeholder. SYN flood alerts now include `top_sources` (list of `(ip, count)`), `window_start`, and `window_end`.
+- Whitelist: shared and persisted via `models.ids_whitelist`; applied to ARP and TCP handlers to suppress alerts for trusted IPs.
+- Optional auto-block: when enabled, will block top offending source IPs via `FirewallBlocker` on critical SYN flood alerts.
 - Stats: `started_at`, `packets_seen`, `alerts`, `arp_scans`, `syn_events`.
 
 ## Utils
@@ -114,6 +120,7 @@ This file summarizes how the backend works, where key functions live, and how re
 
 ## Persistence
 - Users: JSON file data/users.json created/updated on startup if missing.
+- IDS whitelist: JSON file data/ids_whitelist.json maintained by the whitelist API.
 - Runtime state (attacks/scans/sniffers) is **in-memory only**; cleared on restart.
 
 ## Security Notes

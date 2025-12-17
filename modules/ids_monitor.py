@@ -8,7 +8,7 @@ Designed to be light-weight and extensible for future detectors.
 
 import threading
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from typing import Callable, Dict, List, Optional
 
@@ -16,6 +16,7 @@ from scapy.all import ARP, Ether, IP, TCP, srp, sniff
 
 from utils.logger import get_logger
 from utils.network_utils import get_default_network_range
+import models
 
 Alert = Dict[str, object]
 
@@ -32,6 +33,8 @@ class IDSMonitor:
         syn_window_sec: int = 10,
         syn_unique_sources: int = 15,
         alert_sink: Optional[Callable[[Alert], None]] = None,
+        auto_block: bool = False,
+        auto_block_top_n: int = 3,
     ):
         self.interface = interface
         self.network_range = network_range or get_default_network_range(interface) or "192.168.1.0/24"
@@ -40,9 +43,11 @@ class IDSMonitor:
         self.syn_window_sec = max(3, syn_window_sec)
         self.syn_unique_sources = max(5, syn_unique_sources)
         self.alert_sink = alert_sink
+        self.auto_block = bool(auto_block)
+        self.auto_block_top_n = max(1, int(auto_block_top_n))
 
-        # Whitelist: trusted IPs (gateway, servers)
-        self.whitelist = {'192.168.111.1', '192.168.111.2', '192.168.111.254', '192.168.111.12'}
+        # Shared whitelist (trusted IPs)
+        self.whitelist = models.ids_whitelist  # shared set
         
         self.logger = get_logger("IDSMonitor")
         self.running = threading.Event()
@@ -100,9 +105,12 @@ class IDSMonitor:
                 "syn_threshold": self.syn_threshold,
                 "syn_window_sec": self.syn_window_sec,
                 "syn_unique_sources": self.syn_unique_sources,
+                "auto_block": self.auto_block,
+                "auto_block_top_n": self.auto_block_top_n,
             },
             "stats": self.stats,
             "alerts": list(self.alerts)[-50:],
+            "whitelist": models.list_ids_whitelist(),
         }
 
     def ack_alert(self, alert_id: str) -> bool:
@@ -111,6 +119,16 @@ class IDSMonitor:
                 alert["acknowledged"] = True
                 return True
         return False
+
+    # Whitelist helpers (delegates to shared model state)
+    def add_whitelist(self, ip: str) -> bool:
+        return models.add_to_ids_whitelist(ip)
+
+    def remove_whitelist(self, ip: str) -> bool:
+        return models.remove_from_ids_whitelist(ip)
+
+    def list_whitelist(self) -> List[str]:
+        return models.list_ids_whitelist()
 
     # ------------------------------------------------------------------
     # Internal loops
@@ -208,6 +226,8 @@ class IDSMonitor:
 
             syn_count = len(filtered)
             unique_sources = len({s for _, s in filtered})
+            source_counts = Counter([s for _, s in filtered])
+            top_sources = source_counts.most_common(self.auto_block_top_n)
 
             cooldown_until = self.alert_cooldowns.get(dst_ip, 0)
             if (
@@ -224,6 +244,9 @@ class IDSMonitor:
                     "syn_count": syn_count,
                     "window_seconds": self.syn_window_sec,
                     "unique_sources": unique_sources,
+                    "top_sources": top_sources,
+                    "window_start": window_start,
+                    "window_end": ts,
                 }
                 self._raise_alert("SYN_FLOOD_DETECTED", summary, "critical", details)
                 self.alert_cooldowns[dst_ip] = ts + self.syn_window_sec
@@ -332,6 +355,24 @@ class IDSMonitor:
                 self.alert_sink(alert)
             except Exception as exc:  # noqa: BLE001
                 self.logger.error(f"Alert sink failed: {exc}")
+
+        # Optional auto-block for critical SYN floods
+        if (
+            alert_type == "SYN_FLOOD_DETECTED"
+            and self.auto_block
+            and severity == "critical"
+            and details.get("top_sources")
+        ):
+            blocker = models.firewall_blocker
+            if blocker:
+                for src_ip, _ in details.get("top_sources", []):
+                    try:
+                        blocked = blocker.block_ip(src_ip, reason="syn_flood_auto")
+                        if blocked:
+                            models.ids_stats["blocks_executed"] = models.ids_stats.get("blocks_executed", 0) + 1
+                            self.logger.info(f"Auto-blocked {src_ip} due to SYN flood")
+                    except Exception as exc:  # noqa: BLE001
+                        self.logger.error(f"Auto-block failed for {src_ip}: {exc}")
 
 
 __all__ = ["IDSMonitor", "Alert"]

@@ -74,6 +74,8 @@ def start_ids():
         syn_threshold = int(data.get('syn_threshold', 150))
         syn_window_sec = int(data.get('syn_window_sec', 10))
         syn_unique_sources = int(data.get('syn_unique_sources', 15))
+        auto_block = bool(data.get('auto_block', False))
+        auto_block_top_n = int(data.get('auto_block_top_n', 3))
 
         monitor = models.ids_monitor
         if monitor and monitor.running.is_set():
@@ -87,6 +89,8 @@ def start_ids():
             syn_window_sec=syn_window_sec,
             syn_unique_sources=syn_unique_sources,
             alert_sink=record_ids_alert,
+            auto_block=auto_block,
+            auto_block_top_n=auto_block_top_n,
         )
         register_ids_monitor(monitor)
         monitor.start()
@@ -127,11 +131,13 @@ def status_ids():
             'config': {},
             'stats': {},
             'alerts': [],
+            'whitelist': models.list_ids_whitelist(),
         }
         return jsonify({
             'status': status_payload,
             'alerts': list_ids_alerts(limit=50),
             'stats': ids_stats,
+            'whitelist': models.list_ids_whitelist(),
         }), 200
     except Exception as exc:  # noqa: BLE001
         logger.error(f"Failed to fetch IDS status: {exc}")
@@ -154,6 +160,7 @@ def ids_overview():
             'config': {},
             'stats': {},
             'alerts': [],
+            'whitelist': models.list_ids_whitelist(),
         }
         
         logger.info(f"Overview: {len(nodes)} nodes, {len(list_ids_alerts())} alerts")
@@ -164,6 +171,7 @@ def ids_overview():
             'nodes': nodes,
             'network_range': network_range,
             'last_discovery': _discovery_cache['ts'],
+            'whitelist': models.list_ids_whitelist(),
         }), 200
     except Exception as exc:  # noqa: BLE001
         logger.error(f"Failed to fetch overview: {exc}", exc_info=True)
@@ -178,7 +186,7 @@ def ids_discover_now():
         _discovery_cache['ts'] = 0
         # Full discovery here (with ports/services) since this is an explicit refresh.
         nodes, network_range = _get_or_discover_nodes(force=True, full_scan=True)
-        return jsonify({'nodes': nodes, 'network_range': network_range}), 200
+        return jsonify({'nodes': nodes, 'network_range': network_range, 'whitelist': models.list_ids_whitelist()}), 200
     except Exception as exc:  # noqa: BLE001
         logger.error(f"Failed to discover nodes: {exc}")
         return jsonify({'error': str(exc)}), 500
@@ -256,8 +264,7 @@ def _node_status(node, alerts):
         return 'danger'
 
     # Whitelist: gateway and trusted servers are always safe
-    whitelist = {'192.168.111.1', '192.168.111.2', '192.168.111.254', '192.168.111.12'}
-    if ip in whitelist:
+    if ip in models.ids_whitelist:
         return 'safe'
 
     # Mark as danger if any alert references this IP
@@ -300,3 +307,49 @@ def _get_or_discover_nodes(force: bool = False, full_scan: bool = True):
     _discovery_cache['nodes'] = nodes
     _discovery_cache['range'] = net_range
     return nodes, net_range
+
+
+# ============================================================================
+# WHITELIST MANAGEMENT
+# ============================================================================
+
+
+@ids_bp.route('/ids/whitelist', methods=['GET'])
+@require_defender
+def list_whitelist():
+    try:
+        return jsonify({'whitelist': models.list_ids_whitelist()}), 200
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Failed to list whitelist: {exc}")
+        return jsonify({'error': str(exc)}), 500
+
+
+@ids_bp.route('/ids/whitelist', methods=['POST'])
+@require_defender
+def add_whitelist():
+    try:
+        data = request.get_json(silent=True) or {}
+        ip = data.get('ip')
+        if not ip:
+            return jsonify({'error': 'ip required'}), 400
+        added = models.add_to_ids_whitelist(ip)
+        return jsonify({'added': added, 'whitelist': models.list_ids_whitelist()}), 200
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Failed to add whitelist entry: {exc}")
+        return jsonify({'error': str(exc)}), 500
+
+
+@ids_bp.route('/ids/whitelist', methods=['DELETE'])
+@require_defender
+def remove_whitelist():
+    try:
+        data = request.get_json(silent=True) or {}
+        ip = data.get('ip')
+        if not ip:
+            return jsonify({'error': 'ip required'}), 400
+        removed = models.remove_from_ids_whitelist(ip)
+        status = 200 if removed else 404
+        return jsonify({'removed': removed, 'whitelist': models.list_ids_whitelist()}), status
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Failed to remove whitelist entry: {exc}")
+        return jsonify({'error': str(exc)}), 500

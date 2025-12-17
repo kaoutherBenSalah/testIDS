@@ -13,6 +13,17 @@ from werkzeug.security import generate_password_hash, check_password_hash
 DB_PATH = Path(__file__).parent / 'data' / 'users.json'
 DB_PATH.parent.mkdir(exist_ok=True)
 
+# IDS whitelist persistence
+WHITELIST_PATH = Path(__file__).parent / 'data' / 'ids_whitelist.json'
+WHITELIST_PATH.parent.mkdir(exist_ok=True)
+
+DEFAULT_WHITELIST = {
+    '192.168.111.1',
+    '192.168.111.2',
+    '192.168.111.254',
+    '192.168.111.12',
+}
+
 # In-memory stores for runtime data
 active_attacks = {}  # {attack_id: {'type': 'arp', 'target': '192.168.189.20', ...}}
 active_scanners = {}  # {scan_id: {'hosts': [], 'status': 'in_progress'}}
@@ -28,6 +39,7 @@ ids_stats = {
     'blocks_requested': 0,
     'blocks_executed': 0,
 }
+ids_whitelist = set()
 
 # Attack logs stored in memory (reset on restart)
 attack_logs = []  # [{'type': 'ARP', 'target': '192.168.189.20', 'status': 'running', ...}]
@@ -101,6 +113,54 @@ def create_default_users():
 def get_or_create_users():
     """Create default users if they don't exist"""
     create_default_users()
+
+
+# ============================================================================
+# IDS WHITELIST HELPERS
+# ============================================================================
+
+
+def _load_ids_whitelist() -> set:
+    """Load whitelist from disk, falling back to defaults on first run."""
+    if WHITELIST_PATH.exists():
+        try:
+            with open(WHITELIST_PATH, 'r') as f:
+                data = json.load(f)
+                return set(data) if isinstance(data, list) else set(DEFAULT_WHITELIST)
+        except Exception:
+            # On any error, fall back to defaults but do not fail startup
+            return set(DEFAULT_WHITELIST)
+    return set(DEFAULT_WHITELIST)
+
+
+def _save_ids_whitelist(whitelist: set):
+    """Persist whitelist to disk."""
+    try:
+        with open(WHITELIST_PATH, 'w') as f:
+            json.dump(sorted(list(whitelist)), f, indent=2)
+    except Exception:
+        # Do not crash on persistence issues; IDS can still run
+        pass
+
+
+def list_ids_whitelist() -> List[str]:
+    return sorted(list(ids_whitelist))
+
+
+def add_to_ids_whitelist(ip: str) -> bool:
+    if not ip:
+        return False
+    ids_whitelist.add(ip)
+    _save_ids_whitelist(ids_whitelist)
+    return True
+
+
+def remove_from_ids_whitelist(ip: str) -> bool:
+    if ip in ids_whitelist:
+        ids_whitelist.remove(ip)
+        _save_ids_whitelist(ids_whitelist)
+        return True
+    return False
 
 
 def verify_password(username, password):
@@ -177,3 +237,4 @@ def request_block(entity: Dict[str, object]):
 # Initialize on import
 from datetime import datetime
 get_or_create_users()
+ids_whitelist.update(_load_ids_whitelist())
