@@ -77,7 +77,7 @@ def start_arp_attack():
         # Store in memory
         active_attacks[attack_id] = {
             'object': spoofer,
-            'type': 'arp',
+            'type': 'ARP',
             'target_ip': victim_ip,
             'gateway_ip': gateway_ip,
             'packets_sent': 0,
@@ -188,7 +188,7 @@ def start_syn_attack():
         # Store in memory
         active_attacks[attack_id] = {
             'object': flooder,
-            'type': 'syn',
+            'type': 'SYN',
             'target_ip': ','.join(target_ips),
             'target_port': ','.join(map(str, target_ports)),
             'packets_sent': 0,
@@ -274,7 +274,7 @@ def start_dns_attack():
         # Store in memory
         active_attacks[attack_id] = {
             'object': spoofer,
-            'type': 'dns',
+            'type': 'DNS',
             'attacker_ip': attacker_ip,
             'target_domains': target_domains,
             'packets_spoofed': 0,
@@ -302,8 +302,8 @@ def stop_dns_attack():
     try:
         data = request.get_json()
         attack_id = data.get('attack_id') or list(
-            [k for k, v in active_attacks.items() if v['type'] == 'dns']
-        )[0] if any(v['type'] == 'dns' for v in active_attacks.values()) else None
+            [k for k, v in active_attacks.items() if v['type'] == 'DNS']
+        )[0] if any(v['type'] == 'DNS' for v in active_attacks.values()) else None
         
         if not attack_id or attack_id not in active_attacks:
             return jsonify({'error': 'Attack not found'}), 404
@@ -339,13 +339,14 @@ def get_attack_stats():
         attacks = {}
         
         for attack_id, attack_info in active_attacks.items():
-            target_ip = attack_info['target_ip']
+            target_ip = attack_info.get('target_ip') or attack_info.get('attacker_ip')
             is_blocked = target_ip in models.blocked_ips
+            packets = attack_info.get('packets_sent', 0) or attack_info.get('packets_spoofed', 0)
             
             attacks[attack_id] = {
                 'type': attack_info['type'],
                 'target_ip': target_ip,
-                'packets_sent': attack_info['packets_sent'],
+                'packets_sent': packets,
                 'status': 'BLOCKED ❌' if is_blocked else attack_info['status'],
                 'is_blocked': is_blocked,
             }
