@@ -12,7 +12,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Callable, Dict, List, Optional
 
-from scapy.all import ARP, Ether, IP, TCP, srp, sniff
+from scapy.all import ARP, Ether, IP, TCP, UDP, DNS, DNSQR, DNSRR, srp, sniff
 
 from utils.logger import get_logger
 from utils.network_utils import get_default_network_range
@@ -52,6 +52,7 @@ class IDSMonitor:
         self.syn_history: Dict[str, List[tuple]] = defaultdict(list)  # dst_ip -> [(ts, src_ip)]
         self.arp_table: Dict[str, str] = {}  # ip -> mac (baseline learned mappings)
         self.port_scan_tracker: Dict[str, List[tuple]] = defaultdict(list)  # src_ip -> [(ts, dst_port)]
+        self.dns_cache: Dict[str, str] = {}  # domain -> expected_ip (legitimate mappings)
 
         self.stats = {
             "started_at": None,
@@ -72,9 +73,9 @@ class IDSMonitor:
         self.stats["started_at"] = datetime.utcnow().isoformat() + "Z"
 
         self.threads = [
-            threading.Thread(target=self._arp_scan_loop, name="IDS-ARP", daemon=True),
             threading.Thread(target=self._arp_spoof_sniff_loop, name="IDS-ARP-SPOOF", daemon=True),
             threading.Thread(target=self._syn_sniff_loop, name="IDS-SYN", daemon=True),
+            threading.Thread(target=self._dns_sniff_loop, name="IDS-DNS", daemon=True),
         ]
         for t in self.threads:
             t.start()
@@ -113,17 +114,8 @@ class IDSMonitor:
         return False
 
     # ------------------------------------------------------------------
-    # Internal loops
+    # Internal loops (PASSIVE SNIFFING ONLY - NO NETWORK SCANNING)
     # ------------------------------------------------------------------
-    def _arp_scan_loop(self):
-        while self.running.is_set():
-            try:
-                self._run_arp_check()
-            except Exception as exc:  # noqa: BLE001
-                self.logger.error(f"ARP scan failed: {exc}")
-            finally:
-                time.sleep(self.arp_interval)
-
     def _syn_sniff_loop(self):
         # Use short sniffs with timeout so we can react to stop events
         while self.running.is_set():
@@ -155,32 +147,24 @@ class IDSMonitor:
                 self.logger.error(f"ARP spoof sniff failed: {exc}")
                 time.sleep(2)
 
+    def _dns_sniff_loop(self):
+        """Detect DNS spoofing by monitoring DNS responses"""
+        while self.running.is_set():
+            try:
+                sniff(
+                    iface=self.interface,
+                    filter="udp port 53",
+                    prn=self._handle_dns_packet,
+                    store=False,
+                    timeout=3,
+                )
+            except Exception as exc:  # noqa: BLE001
+                self.logger.error(f"DNS sniff failed: {exc}")
+                time.sleep(2)
+
     # ------------------------------------------------------------------
-    # Detection logic
+    # Detection logic (PASSIVE - no network scanning)
     # ------------------------------------------------------------------
-    def _run_arp_check(self):
-        arp = ARP(pdst=self.network_range)
-        ether = Ether(dst="ff:ff:ff:ff:ff:ff")
-        packet = ether / arp
-
-        self.logger.debug(f"Sending ARP probe on {self.network_range} via {self.interface or 'auto'}")
-        result = srp(packet, timeout=3, verbose=0, iface=self.interface)[0]
-
-        clients = []
-        for _, received in result:
-            clients.append({"ip": received.psrc, "mac": received.hwsrc})
-
-        mac_table = self._invert_clients_table(clients)
-        repeated = self._find_repeated_macs(mac_table)
-        self.stats["arp_scans"] += 1
-
-        if repeated:
-            for mac, ips in repeated.items():
-                summary = f"MAC {mac} mapped to multiple IPs"
-                details = {"mac": mac, "ips": ips, "network_range": self.network_range}
-                severity = "high" if len(ips) > 2 else "medium"
-                self._raise_alert("ARP_ANOMALY", summary, severity, details)
-
     def _handle_tcp_packet(self, packet):
         """Handle TCP packets for both SYN flood and port scan detection."""
         if not packet.haslayer(IP) or not packet.haslayer(TCP):
@@ -295,22 +279,60 @@ class IDSMonitor:
                 self.alert_cooldowns[cooldown_key] = ts + 60
                 self.logger.warning(f"ARP SPOOF: {src_ip} MAC changed {expected_mac} -> {src_mac}")
 
+    def _handle_dns_packet(self, packet):
+        """Handle DNS packets for spoofing detection"""
+        try:
+            if not packet.haslayer(DNS) or not packet.haslayer(IP):
+                return
+            
+            dns_layer = packet[DNS]
+            ip_layer = packet[IP]
+            ts = time.time()
+            
+            # Only process DNS responses
+            if dns_layer.qr == 1:  # Response
+                src_ip = ip_layer.src
+                
+                # Skip whitelisted IPs
+                if src_ip in self.whitelist:
+                    return
+                
+                # Extract query and answer
+                if dns_layer.qd and dns_layer.an:
+                    query_name = dns_layer.qd.qname.decode('utf-8').rstrip('.')
+                    
+                    # Get answered IP
+                    for i in range(dns_layer.ancount):
+                        try:
+                            answer = dns_layer.an[i]
+                            if answer.type == 1:  # A record
+                                resolved_ip = answer.rdata
+                                
+                                # Check if we've seen legitimate resolution for this domain
+                                if query_name in self.dns_cache:
+                                    legitimate_ip = self.dns_cache[query_name]
+                                    if resolved_ip != legitimate_ip:
+                                        # Different IP - potential spoofing
+                                        summary = f"DNS SPOOF: {query_name} resolved to {resolved_ip} instead of {legitimate_ip}"
+                                        details = {
+                                            "domain": query_name,
+                                            "spoofed_ip": resolved_ip,
+                                            "legitimate_ip": legitimate_ip,
+                                            "source_ip": src_ip,
+                                        }
+                                        self._raise_alert("DNS_SPOOF_DETECTED", summary, "critical", details)
+                                else:
+                                    # Learn legitimate resolution
+                                    self.dns_cache[query_name] = resolved_ip
+                        except (AttributeError, IndexError):
+                            continue
+        
+        except Exception as e:
+            self.logger.error(f"Error handling DNS packet: {e}")
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def _invert_clients_table(self, clients: List[Dict[str, str]]) -> Dict[str, List[str]]:
-        mac_table: Dict[str, List[str]] = {}
-        for client in clients:
-            mac = client.get("mac")
-            ip_addr = client.get("ip")
-            if not mac or not ip_addr:
-                continue
-            mac_table.setdefault(mac, []).append(ip_addr)
-        return mac_table
-
-    def _find_repeated_macs(self, mac_table: Dict[str, List[str]]) -> Dict[str, List[str]]:
-        return {mac: ips for mac, ips in mac_table.items() if len(ips) > 1}
-
     def _raise_alert(self, alert_type: str, summary: str, severity: str, details: Dict[str, object]):
         alert: Alert = {
             "id": f"{alert_type}-{int(time.time() * 1000)}",
