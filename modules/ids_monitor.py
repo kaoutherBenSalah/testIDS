@@ -232,10 +232,14 @@ class IDSMonitor:
             if ts >= cooldown_until:
                 self.stats["port_scans"] += 1
                 summary = f"PORT SCAN DETECTED: {src_ip} scanned {unique_ports} ports in 10s"
+                # Only include top 10 ports in alert, not all ports (keeps alert compact)
+                all_ports = sorted(list(set(p for _, p in filtered_scans)))
+                top_ports = all_ports[:10]
                 details = {
                     "src_ip": src_ip,
                     "unique_ports": unique_ports,
-                    "ports_scanned": list({p for _, p in filtered_scans}),
+                    "ports_scanned": top_ports,
+                    "ports_truncated": len(all_ports) > 10,
                     "window_seconds": 10,
                 }
                 self._raise_alert("PORT_SCAN_DETECTED", summary, "high", details)
