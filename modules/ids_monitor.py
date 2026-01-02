@@ -71,6 +71,7 @@ class IDSMonitor:
             "alerts": 0,
             "arp_scans": 0,
             "syn_events": 0,
+            "dns_spoofs": 0,
             "port_scans": 0,
         }
 
@@ -342,6 +343,7 @@ class IDSMonitor:
                                             "legitimate_ip": legitimate_ip,
                                             "source_ip": src_ip,
                                         }
+                                        self.stats["dns_spoofs"] += 1
                                         self._raise_alert("DNS_SPOOF_DETECTED", summary, "critical", details)
                             except (AttributeError, IndexError):
                                 continue

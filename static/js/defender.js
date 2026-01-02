@@ -8,6 +8,7 @@ const statPackets = document.getElementById('stat-packets');
 const statAlerts = document.getElementById('stat-alerts');
 const statArp = document.getElementById('stat-arp');
 const statSyn = document.getElementById('stat-syn');
+const statDns = document.getElementById('stat-dns');
 const statBlocks = document.getElementById('stat-blocks');
 const startedSpan = document.getElementById('ids-started');
 const nodesBody = document.getElementById('nodes-body');
@@ -59,6 +60,7 @@ async function fetchOverview() {
         statAlerts.textContent = stats.alerts || 0;
         statArp.textContent = stats.arp_scans || 0;
         statSyn.textContent = stats.syn_events || 0;
+        statDns.textContent = stats.dns_spoofs || 0;
         statBlocks.textContent = (data.stats && data.stats.blocks_requested) || 0;
         startedSpan.textContent = stats.started_at || '-';
 
