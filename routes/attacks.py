@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from modules.arp_spoof import ARPSpoofer
 from modules.syn_flood import SYNFlooder
 from modules.dns_spoof import DNSSpoofer
+import models
 from models import active_attacks, log_attack
 
 attacks_bp = Blueprint('attacks', __name__)
