@@ -14,6 +14,11 @@ const startedSpan = document.getElementById('ids-started');
 const nodesBody = document.getElementById('nodes-body');
 const nodesEmpty = document.getElementById('nodes-empty');
 const overviewMsg = document.getElementById('overview-message');
+const blockedIpsList = document.getElementById('blocked-ips');
+const blockedEmpty = document.getElementById('blocked-empty');
+
+// Track blocked IPs in memory (persists during session)
+let blockedIPs = new Set();
 
 function setMessage(text, isError = false) {
     if (!msgSpan) return;
@@ -85,21 +90,37 @@ function renderNodes(nodes) {
         const tr = document.createElement('tr');
         const status = node.status || 'unknown';
         const badge = `<span class="badge ${statusBadgeClass(status)}">${status}</span>`;
-        const hostname = node.hostname || 'Unknown host';
         const ip = node.ip || '-';
-        const mac = node.mac || '-';
-        const openPorts = node.open_ports && node.open_ports.length ? node.open_ports.join(', ') : '—';
-        const services = (node.services || []).map((s) => `${s.port}/${s.service}`).join(', ') || '—';
+        const isBlocked = blockedIPs.has(ip);
+        const blockText = isBlocked ? '🛑 BLOCKED' : 'Block';
+        const btnClass = isBlocked ? 'btn btn-success' : 'btn btn-danger';
 
         tr.innerHTML = `
             <td>${badge}</td>
-            <td><strong>${hostname}</strong></td>
-            <td>${ip}<br /><span class="muted">${mac}</span></td>
-            <td>${openPorts}</td>
-            <td>${services}</td>
-            <td><button class="btn btn-danger" onclick="blockIp('${ip}', '${mac}')">Block</button></td>
+            <td><strong>${ip}</strong></td>
+            <td><button class="${btnClass}" onclick="blockIp('${ip}', '${node.mac || ''}')" ${isBlocked ? 'disabled' : ''}>${blockText}</button></td>
         `;
         nodesBody.appendChild(tr);
+    });
+}
+
+function renderBlockedIPs() {
+    if (!blockedIpsList) return;
+    blockedIpsList.innerHTML = '';
+    if (blockedIPs.size === 0) {
+        blockedEmpty.style.display = 'block';
+        return;
+    }
+    blockedEmpty.style.display = 'none';
+    
+    Array.from(blockedIPs).forEach((ip) => {
+        const tag = document.createElement('div');
+        tag.className = 'blocked-ip-tag';
+        tag.innerHTML = `
+            <span>🚫 ${ip} (Blocked)</span>
+            <button class="btn-unblock" onclick="unblockIp('${ip}')">Unblock</button>
+        `;
+        blockedIpsList.appendChild(tag);
     });
 }
 
@@ -242,9 +263,26 @@ async function blockIp(ip, mac, alertId = null) {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'block failed');
-        setMessage('Block recorded');
+        
+        // Track blocked IP
+        blockedIPs.add(ip);
+        renderBlockedIPs();
+        setMessage(`✅ Blocked ${ip} - IP added to firewall blacklist`);
+        fetchOverview();
     } catch (err) {
-        setMessage(`Block error: ${err.message}`, true);
+        setMessage(`❌ Block error: ${err.message}`, true);
+    }
+}
+
+async function unblockIp(ip) {
+    if (!ip) return;
+    try {
+        // Remove from blocked set
+        blockedIPs.delete(ip);
+        renderBlockedIPs();
+        setMessage(`✅ Unblocked ${ip}`);
+    } catch (err) {
+        setMessage(`❌ Unblock error: ${err.message}`, true);
     }
 }
 

@@ -136,3 +136,204 @@
 2025-12-17 14:23:01 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
 2025-12-17 14:23:06 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
 2025-12-17 14:23:06 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 15:24:18 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 15:24:23 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 15:24:23 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 15:24:57 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 15:25:02 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 15:25:02 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:32:09 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:32:14 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:32:14 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:33:21 - IDSMonitor - [CRITICAL] - 🚨 ATTAQUE DÉTECTÉE: PORT_SCAN_DETECTED
+  - src_ip: 192.168.1.248
+  - unique_ports: 10
+  - ports_scanned: [110, 143, 80, 21, 22, 23, 53, 25, 443, 445]
+  - window_seconds: 10
+2025-12-17 18:33:26 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:33:29 - IDSMonitor - [CRITICAL] - 🚨 ATTAQUE DÉTECTÉE: PORT_SCAN_DETECTED
+  - src_ip: 192.168.1.1
+  - unique_ports: 10
+  - ports_scanned: [23650, 23652, 23653, 23654, 23655, 23656, 23657, 3499, 62382, 20]
+  - window_seconds: 10
+2025-12-17 18:33:30 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:33:31 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:33:31 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:33:34 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:33:35 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:33:35 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:33:39 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:33:39 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:33:53 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:33:55 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:33:58 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:33:58 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:33:58 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:00 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:00 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:03 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:03 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:06 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:06 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:09 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:11 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:11 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:11 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:11 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:15 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:15 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:21 - IDSMonitor - [CRITICAL] - 🚨 ATTAQUE DÉTECTÉE: PORT_SCAN_DETECTED
+  - src_ip: 192.168.1.248
+  - unique_ports: 14
+  - ports_scanned: [5432, 3306, 3389, 110, 143, 80, 8080, 53, 22, 23, 21, 25, 443, 445]
+  - window_seconds: 10
+2025-12-17 18:34:26 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:26 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:27 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:29 - IDSMonitor - [CRITICAL] - 🚨 ATTAQUE DÉTECTÉE: PORT_SCAN_DETECTED
+  - src_ip: 192.168.1.1
+  - unique_ports: 18
+  - ports_scanned: [55968, 55969, 57980, 57985, 55972, 57986, 57987, 57988, 57990, 57991, 57983, 20, 55960, 55963, 55964, 55965, 57982, 55967]
+  - window_seconds: 10
+2025-12-17 18:34:31 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:31 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:31 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:31 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:31 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:32 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:32 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:35 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:36 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:36 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:39 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:40 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:40 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:44 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:44 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:49 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:50 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:51 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:54 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:54 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:55 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:55 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:56 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:56 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:34:58 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:01 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:01 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:04 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:04 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:06 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:06 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:06 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:06 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:19 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:20 - IDSMonitor - [CRITICAL] - 🚨 ATTAQUE DÉTECTÉE: PORT_SCAN_DETECTED
+  - src_ip: 151.101.122.172
+  - unique_ports: 10
+  - ports_scanned: [18713, 18695, 18697, 18700, 18709, 18678, 18711, 18712, 18681, 18685]
+  - window_seconds: 10
+2025-12-17 18:35:21 - IDSMonitor - [CRITICAL] - 🚨 ATTAQUE DÉTECTÉE: PORT_SCAN_DETECTED
+  - src_ip: 192.168.1.248
+  - unique_ports: 16
+  - ports_scanned: [2087, 3306, 3389, 110, 143, 80, 8080, 8443, 23, 53, 21, 22, 5432, 25, 443, 445]
+  - window_seconds: 10
+2025-12-17 18:35:24 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:24 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:25 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:25 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:29 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:29 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:30 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:30 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:50 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:56 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:35:56 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:01 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:06 - IDSMonitor - [CRITICAL] - 🚨 ATTAQUE DÉTECTÉE: PORT_SCAN_DETECTED
+  - src_ip: 72.145.26.148
+  - unique_ports: 10
+  - ports_scanned: [53664, 53665, 53667, 53669, 53671, 17159, 38503, 38504, 38506, 38507]
+  - window_seconds: 10
+2025-12-17 18:36:07 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:07 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:08 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:14 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:14 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:30 - IDSMonitor - [CRITICAL] - 🚨 ATTAQUE DÉTECTÉE: PORT_SCAN_DETECTED
+  - src_ip: 192.168.1.248
+  - unique_ports: 10
+  - ports_scanned: [110, 143, 80, 23, 21, 22, 53, 25, 443, 3389]
+  - window_seconds: 10
+2025-12-17 18:36:37 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:42 - IDSMonitor - [CRITICAL] - 🚨 ATTAQUE DÉTECTÉE: PORT_SCAN_DETECTED
+  - src_ip: 192.168.1.1
+  - unique_ports: 10
+  - ports_scanned: [52855, 52856, 43122, 20, 43125, 43126, 43127, 52852, 52853, 52854]
+  - window_seconds: 10
+2025-12-17 18:36:43 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:43 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:44 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:49 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:49 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:52 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:53 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:54 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:56 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:58 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:58 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:58 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:36:58 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:00 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:00 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:01 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:01 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:04 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:09 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:09 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:09 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:14 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:14 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:14 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:19 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:19 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:21 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:22 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:24 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:25 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:26 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:26 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:27 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:27 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:29 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:29 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:30 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:30 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:31 - IDSMonitor - [CRITICAL] - 🚨 ATTAQUE DÉTECTÉE: PORT_SCAN_DETECTED
+  - src_ip: 192.168.1.248
+  - unique_ports: 16
+  - ports_scanned: [7680, 3306, 110, 8443, 8080, 80, 143, 23, 53, 21, 22, 5432, 25, 443, 3389, 445]
+  - window_seconds: 10
+2025-12-17 18:37:38 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:43 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:43 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:44 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:44 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.248
+2025-12-17 18:37:45 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:49 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:49 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:49 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:49 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.248
+2025-12-17 18:37:49 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.248
+2025-12-17 18:37:49 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:50 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.248
+2025-12-17 18:37:50 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:50 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:54 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:54 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:54 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:54 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.170
+2025-12-17 18:37:55 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.248
+2025-12-17 18:37:55 - NetworkScanner - [WARNING] - ❌ Could not resolve hostname for 192.168.1.248
+2025-12-17 18:37:55 - NetworkScanner - [WARNING] - Could not resolve hostname for 192.168.1.248

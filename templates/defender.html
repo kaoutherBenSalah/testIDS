@@ -22,6 +22,18 @@
     .btn-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     .header-row { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
     .status-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; }
+    .detection-legend { display:flex; flex-direction:column; gap:8px; }
+    .legend-item { padding:8px 10px; background:#0a0a0d; border-left:3px solid #444; border-radius:3px; }
+    .legend-item strong { color:#fff; }
+    .legend-item.arp-legend { border-left-color:#e0b347; }
+    .legend-item.syn-legend { border-left-color:#ff9f9f; }
+    .legend-item.dns-legend { border-left-color:#6cf28b; }
+    .blocked-ips-list { display:flex; flex-direction:column; gap:8px; }
+    .blocked-ip-tag { padding:6px 10px; background:#361015; border:1px solid #e45858; border-radius:4px; color:#ff9f9f; font-size:0.9rem; display:flex; justify-content:space-between; align-items:center; }
+    .btn-unblock { background:transparent; border:1px solid #ff9f9f; color:#ff9f9f; padding:2px 6px; border-radius:3px; cursor:pointer; font-size:0.8rem; }
+    .btn-unblock:hover { background:#e45858; color:#fff; }
+    .tooltip-icon { cursor:help; color:#888; font-size:0.8rem; margin-left:4px; }
+    .control-label { display:flex; align-items:center; }
 </style>
 
 <div class="defender-shell fade-in">
@@ -58,75 +70,117 @@
         <div class="card">
             <h3 class="card-header">Detections</h3>
             <div class="card-body">
-                <p>ARP scans: <strong id="stat-arp">0</strong></p>
-                <p>SYN events: <strong id="stat-syn">0</strong></p>
-                <p>DNS spoofs: <strong id="stat-dns">0</strong></p>
+                <p>🔍 ARP scans: <strong id="stat-arp">0</strong></p>
+                <p>⚡ SYN events: <strong id="stat-syn">0</strong></p>
+                <p>🌐 DNS spoofs: <strong id="stat-dns">0</strong></p>
                 <p class="muted" id="overview-message">Ready.</p>
             </div>
         </div>
     </div>
 
     <div class="card">
-        <div class="header-row" style="margin-bottom:8px;">
-            <h3 class="card-header">📡 Network Inventory</h3>
-            <span class="muted">Auto-discovered nodes with hostname/IP and risk flag</span>
-        </div>
-        <div class="card-body" style="overflow-x:auto;">
-            <table class="nodes-table">
-                <thead>
-                    <tr>
-                        <th>Status</th>
-                        <th>Host</th>
-                        <th>IP / MAC</th>
-                        <th>Open ports</th>
-                        <th>Services</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="nodes-body"></tbody>
-            </table>
-            <p class="muted" id="nodes-empty">No nodes discovered yet.</p>
+        <h3 class="card-header">📋 What Each Detection Means</h3>
+        <div class="detection-legend">
+            <div class="legend-item arp-legend">
+                <strong>🔍 ARP SCAN</strong>: Attacker sends multiple ARP requests to discover network devices
+            </div>
+            <div class="legend-item syn-legend">
+                <strong>⚡ SYN FLOOD</strong>: Attacker rapidly sends SYN packets (500+ in 10 seconds) from 20+ different sources to overwhelm the system
+            </div>
+            <div class="legend-item dns-legend">
+                <strong>🌐 DNS SPOOF</strong>: Attacker intercepts DNS queries and sends fake IP addresses, redirecting you to their server
+            </div>
         </div>
     </div>
 
     <div class="wide-grid">
         <div class="card">
-            <h3 class="card-header">🚨 Live Alerts</h3>
+            <h3 class="card-header">🛑 Blocked IPs</h3>
             <div class="card-body">
-                <div id="alerts-list" class="alert-stack"></div>
-                <p class="muted" id="alerts-empty">No alerts yet. Monitoring...</p>
+                <div id="blocked-ips" class="blocked-ips-list"></div>
+                <p class="muted" id="blocked-empty">No IPs blocked yet.</p>
             </div>
         </div>
         <div class="card">
-            <h3 class="card-header">⚙️ IDS Controls</h3>
+            <h3 class="card-header">📡 Network Inventory</h3>
+            <div class="card-body" style="max-height:300px; overflow-y:auto;">
+                <table class="nodes-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>IP</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="nodes-body"></tbody>
+                </table>
+                <p class="muted" id="nodes-empty">No nodes discovered yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="header-row" style="margin-bottom:8px;">
+            <h3 class="card-header">🚨 Live Alerts</h3>
+            <span class="muted">Real-time attack detection and logging</span>
+        </div>
+        <div class="card-body">
+            <div id="alerts-list" class="alert-stack"></div>
+            <p class="muted" id="alerts-empty">No alerts yet. Monitoring...</p>
+        </div>
+    </div>
+
+    <div class="wide-grid">
+        <div class="card">
+            <h3 class="card-header">⚙️ IDS Configuration</h3>
             <div class="card-body">
                 <div class="controls">
                     <div>
-                        <label>Interface</label>
-                        <input id="ids-interface" class="form-control" placeholder="auto" />
+                        <div class="control-label">
+                            <label>Interface</label>
+                            <span class="tooltip-icon" title="Network interface to monitor (eth0, wlan0, etc)">?</span>
+                        </div>
+                        <input id="ids-interface" class="form-control" placeholder="auto (auto-detect)" />
                     </div>
                     <div>
-                        <label>Network range</label>
+                        <div class="control-label">
+                            <label>Network Range</label>
+                            <span class="tooltip-icon" title="CIDR notation of network to monitor (e.g. 192.168.1.0/24)">?</span>
+                        </div>
                         <input id="ids-range" class="form-control" placeholder="auto" />
                     </div>
                     <div>
-                        <label>ARP interval (s)</label>
-                        <input id="ids-arp" type="number" min="5" value="20" class="form-control" />
+                        <div class="control-label">
+                            <label>SYN Threshold</label>
+                            <span class="tooltip-icon" title="Minimum packets to trigger SYN flood alert (500+ recommended)">?</span>
+                        </div>
+                        <input id="ids-syn-th" type="number" min="20" value="500" class="form-control" />
                     </div>
                     <div>
-                        <label>SYN threshold</label>
-                        <input id="ids-syn-th" type="number" min="20" value="150" class="form-control" />
-                    </div>
-                    <div>
-                        <label>SYN window (s)</label>
+                        <div class="control-label">
+                            <label>SYN Window (s)</label>
+                            <span class="tooltip-icon" title="Time window for counting SYN packets (10 seconds)">?</span>
+                        </div>
                         <input id="ids-syn-win" type="number" min="3" value="10" class="form-control" />
                     </div>
                     <div>
-                        <label>Unique sources min</label>
-                        <input id="ids-syn-unique" type="number" min="5" value="15" class="form-control" />
+                        <div class="control-label">
+                            <label>Unique Sources Min</label>
+                            <span class="tooltip-icon" title="Minimum different source IPs needed for SYN alert (20+ recommended)">?</span>
+                        </div>
+                        <input id="ids-syn-unique" type="number" min="5" value="20" class="form-control" />
                     </div>
                 </div>
-                <p class="muted" id="ids-message" style="margin-top:8px;">Ready.</p>
+                <p class="muted" id="ids-message" style="margin-top:12px;">Ready to configure.</p>
+            </div>
+        </div>
+        <div class="card">
+            <h3 class="card-header">🔧 Advanced</h3>
+            <div class="card-body">
+                <p class="muted"><strong>DNS Whitelisted Sources:</strong></p>
+                <p class="muted" style="font-size:0.85rem;">8.8.8.8, 8.8.4.4, 1.1.1.1, 1.0.0.1</p>
+                <p class="muted" style="margin-top:12px;"><strong>Auto-Learning:</strong></p>
+                <p class="muted" style="font-size:0.85rem;">IDS learns legitimate DNS mappings from whitelisted sources and alerts on spoofed responses only.</p>
             </div>
         </div>
     </div>
