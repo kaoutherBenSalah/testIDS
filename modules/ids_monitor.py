@@ -178,7 +178,6 @@ class IDSMonitor:
 
         # 1. SYN flood detection
         if tcp_layer.flags & 0x02:  # SYN flag
-            self.stats["syn_events"] += 1
             history = self.syn_history[dst_ip]
             history.append((ts, src_ip))
             window_start = ts - self.syn_window_sec
@@ -194,6 +193,7 @@ class IDSMonitor:
                 and unique_sources >= self.syn_unique_sources
                 and ts >= cooldown_until
             ):
+                self.stats["syn_events"] += 1  # Increment ONLY when alert is raised
                 summary = (
                     f"SYN FLOOD: {syn_count} SYNs to {dst_ip} in {self.syn_window_sec}s "
                     f"from {unique_sources} sources"
