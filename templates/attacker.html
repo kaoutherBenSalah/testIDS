@@ -107,12 +107,18 @@
         <div class="card">
             <h3>🌐 DNS Spoofing (Domain Hijacking)</h3>
             <div class="info-box" style="background: #1a2a3a; border-left: 3px solid #0ff; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;">
+                <strong>⚠️ SETUP REQUIRED (Run ONCE before first attack):</strong><br>
+                <code style="background: #000; padding: 0.25rem 0.5rem; border-radius: 3px; color: #0f0;">
+                sudo systemctl stop systemd-resolved<br>
+                sudo systemctl disable systemd-resolved
+                </code>
+                <br><br>
                 <strong>ℹ️ How DNS spoofing works:</strong><br>
                 1. Select a victim from network scan results<br>
-                2. When victim queries for (e.g., google.com), our attacker IP responds first<br>
-                3. <strong>Watch "DNS Spoofs Sent" counter increase</strong> - each number = one successful spoof<br>
-                4. Defender should detect these DNS spoofs as attacks<br>
-                <strong>🔑 Pro Tip:</strong> Open a browser on victim and visit the domains - you'll see the redirect happen!
+                2. When victim queries for (e.g., google.com), our DNS server responds<br>
+                3. <strong>Watch "DNS Spoofs Sent" counter increase</strong> - each = one intercepted query<br>
+                4. Defender detects DNS spoofs as attacks<br>
+                <strong>🔑 Test it:</strong> Open browser on victim and visit the domains!
             </div>
             <div class="form-grid">
                 <div class="form-group">

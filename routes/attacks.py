@@ -393,3 +393,58 @@ def get_attack_stats():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@attacks_bp.route('/dns/test', methods=['GET'])
+@require_attacker
+def test_dns_server():
+    """Test if DNS server is running and can receive queries"""
+    try:
+        import socket
+        import sys
+        
+        dns_attacks = [v for v in active_attacks.values() if v['type'] == 'DNS']
+        
+        if not dns_attacks:
+            return jsonify({
+                'status': 'no_attack',
+                'message': 'No DNS attack running'
+            }), 200
+        
+        attack = dns_attacks[0]
+        server = attack['object']
+        
+        test_result = {
+            'attack_running': server.is_running,
+            'packets_spoofed': server.packets_spoofed,
+            'attacker_ip': server.attacker_ip,
+            'target_domains': list(server.target_domains),
+            'iptables_rules_added': server.iptables_rules_added,
+            'message': 'DNS server is running'
+        }
+        
+        # Check if port 53 is listening
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.settimeout(0.5)
+            # Try to send a test DNS query
+            test_query = b'\x00\x01\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x06google\x03com\x00\x00\x01\x00\x01'
+            s.sendto(test_query, (server.attacker_ip, 53))
+            
+            try:
+                response, _ = s.recvfrom(512)
+                test_result['port_53_test'] = 'Received response'
+                test_result['test_success'] = True
+            except socket.timeout:
+                test_result['port_53_test'] = 'No response on port 53'
+                test_result['test_success'] = False
+            finally:
+                s.close()
+        except Exception as e:
+            test_result['port_53_test'] = f'Test failed: {e}'
+            test_result['test_success'] = False
+        
+        return jsonify(test_result), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
