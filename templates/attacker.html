@@ -106,6 +106,14 @@
 
         <div class="card">
             <h3>🌐 DNS Spoofing (Domain Hijacking)</h3>
+            <div class="info-box" style="background: #1a2a3a; border-left: 3px solid #0ff; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;">
+                <strong>ℹ️ How DNS spoofing works:</strong><br>
+                1. Select a victim from network scan results<br>
+                2. When victim queries for (e.g., google.com), our attacker IP responds first<br>
+                3. <strong>Watch "DNS Spoofs Sent" counter increase</strong> - each number = one successful spoof<br>
+                4. Defender should detect these DNS spoofs as attacks<br>
+                <strong>🔑 Pro Tip:</strong> Open a browser on victim and visit the domains - you'll see the redirect happen!
+            </div>
             <div class="form-grid">
                 <div class="form-group">
                     <label>Victim IP (target machine)</label>
@@ -507,18 +515,27 @@
                         html += `  🎯 Victim: <span style="color: ${isBlocked ? '#ff6b6b' : (isSuccess ? '#0f0' : '#fa4')};">${attack.victim_ip}</span><br>`;
                         html += `  🔄 Redirect To: <span style="color: #0f0;">${attack.attacker_ip}</span><br>`;
                         html += `  📝 Domains: <span style="color: #aaa;">${(attack.target_domains || []).join(', ')}</span><br>`;
+                        html += `<br>`;
+                        // Show spoofed packets count prominently for DNS
+                        const dnsSpoofsColor = attack.packets_sent > 0 ? '#0f0' : '#f80';
+                        html += `<div style="border-left: 3px solid ${dnsSpoofsColor}; padding-left: 0.5rem; color: ${dnsSpoofsColor}; font-weight: bold;">`;
+                        html += `  🎣 DNS Spoofs Sent: ${attack.packets_sent.toLocaleString()}`;
+                        if (attack.packets_sent > 0) {
+                            html += ` <span style="color: #0f0;">✅ (Working!)</span>`;
+                        } else {
+                            html += ` <span style="color: #f80;">⏳ (Listening...)</span>`;
+                        }
+                        html += `</div>`;
                     } else {
                         html += `  🎯 Target: <span style="color: ${isBlocked ? '#ff6b6b' : (isSuccess ? '#0f0' : '#fa4')};">${attack.target_ip}</span><br>`;
+                        if (attack.packets_sent) {
+                            html += `<br>📊 Packets sent: <span style="color: #0f0;">${attack.packets_sent.toLocaleString()}</span>`;
+                        }
                     }
                     
-                    
-                    if (attack.packets_sent) {
-                        html += `<br>📊 Packets sent: <span style="color: #0f0;">${attack.packets_sent.toLocaleString()}</span>`;
-                    }
-                    
-                    if (isSuccess) {
+                    if (isSuccess && attack.type !== 'DNS') {
                         html += `<br><span style="color: #0f0; font-weight: bold;">✅ Target responding (attack working!)</span>`;
-                    } else if (!isBlocked) {
+                    } else if (!isBlocked && attack.type !== 'DNS') {
                         html += `<br><span style="color: #f80;">⏳ Waiting for target response...</span>`;
                     }
                     
