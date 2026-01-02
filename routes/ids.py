@@ -71,9 +71,9 @@ def start_ids():
         interface = data.get('interface')
         network_range = data.get('network_range')
         arp_interval = int(data.get('arp_interval', 20))
-        syn_threshold = int(data.get('syn_threshold', 150))
+        syn_threshold = int(data.get('syn_threshold', 500))  # Increased: real flood needs 500+ SYNs
         syn_window_sec = int(data.get('syn_window_sec', 10))
-        syn_unique_sources = int(data.get('syn_unique_sources', 15))
+        syn_unique_sources = int(data.get('syn_unique_sources', 20))  # Increased: real attack from 20+ sources
 
         monitor = models.ids_monitor
         if monitor and monitor.running.is_set():

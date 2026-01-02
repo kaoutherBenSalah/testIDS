@@ -41,8 +41,19 @@ class IDSMonitor:
         self.syn_unique_sources = max(5, syn_unique_sources)
         self.alert_sink = alert_sink
 
-        # Whitelist: trusted IPs (gateway, servers)
-        self.whitelist = {'192.168.111.1', '192.168.111.2', '192.168.111.254', '192.168.111.12'}
+        # Whitelist: trusted IPs (gateway, servers, legitimate DNS)
+        self.whitelist = {
+            '192.168.111.1',      # Gateway
+            '192.168.111.2', 
+            '192.168.111.254', 
+            '192.168.111.12',
+            '8.8.8.8',            # Google DNS
+            '8.8.4.4',            # Google DNS
+            '1.1.1.1',            # Cloudflare DNS
+            '1.0.0.1',            # Cloudflare DNS
+            '127.0.0.1',          # Localhost
+            '::1'                 # IPv6 localhost
+        }
         
         self.logger = get_logger("IDSMonitor")
         self.running = threading.Event()
@@ -293,26 +304,37 @@ class IDSMonitor:
             if dns_layer.qr == 1:  # Response
                 src_ip = ip_layer.src
                 
-                # Skip whitelisted IPs
+                # Skip whitelisted IPs (legitimate DNS servers)
                 if src_ip in self.whitelist:
+                    # Learn legitimate mappings from trusted DNS servers
+                    if dns_layer.qd and dns_layer.an:
+                        query_name = dns_layer.qd.qname.decode('utf-8').rstrip('.')
+                        for i in range(dns_layer.ancount):
+                            try:
+                                answer = dns_layer.an[i]
+                                if answer.type == 1:  # A record
+                                    self.dns_cache[query_name] = answer.rdata
+                            except (AttributeError, IndexError):
+                                continue
                     return
                 
-                # Extract query and answer
+                # From non-whitelisted source - check for spoofing
                 if dns_layer.qd and dns_layer.an:
                     query_name = dns_layer.qd.qname.decode('utf-8').rstrip('.')
                     
-                    # Get answered IP
-                    for i in range(dns_layer.ancount):
-                        try:
-                            answer = dns_layer.an[i]
-                            if answer.type == 1:  # A record
-                                resolved_ip = answer.rdata
-                                
-                                # Check if we've seen legitimate resolution for this domain
-                                if query_name in self.dns_cache:
-                                    legitimate_ip = self.dns_cache[query_name]
+                    # Only check if we have a legitimate mapping from trusted source
+                    if query_name in self.dns_cache:
+                        legitimate_ip = self.dns_cache[query_name]
+                        
+                        # Get answered IP
+                        for i in range(dns_layer.ancount):
+                            try:
+                                answer = dns_layer.an[i]
+                                if answer.type == 1:  # A record
+                                    resolved_ip = answer.rdata
+                                    
+                                    # Different IP from non-whitelisted source = spoofing
                                     if resolved_ip != legitimate_ip:
-                                        # Different IP - potential spoofing
                                         summary = f"DNS SPOOF: {query_name} resolved to {resolved_ip} instead of {legitimate_ip}"
                                         details = {
                                             "domain": query_name,
@@ -321,11 +343,8 @@ class IDSMonitor:
                                             "source_ip": src_ip,
                                         }
                                         self._raise_alert("DNS_SPOOF_DETECTED", summary, "critical", details)
-                                else:
-                                    # Learn legitimate resolution
-                                    self.dns_cache[query_name] = resolved_ip
-                        except (AttributeError, IndexError):
-                            continue
+                            except (AttributeError, IndexError):
+                                continue
         
         except Exception as e:
             self.logger.error(f"Error handling DNS packet: {e}")
