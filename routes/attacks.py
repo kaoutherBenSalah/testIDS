@@ -337,30 +337,32 @@ def stop_dns_attack():
 def get_attack_stats():
     """Get statistics on running attacks"""
     try:
-        import subprocess
         attacks = {}
         
         for attack_id, attack_info in active_attacks.items():
             target_ip = attack_info.get('target_ip') or attack_info.get('attacker_ip')
             is_blocked = target_ip in models.blocked_ips
+            
+            # Get packet count - DNS attacks track packets_spoofed, others track packets_sent
             packets = attack_info.get('packets_sent', 0) or attack_info.get('packets_spoofed', 0)
             
-            # Check if attack target is reachable (sign of successful attack)
-            success = False
-            try:
-                result = subprocess.run(['ping', '-c', '1', '-W', '1', target_ip], 
-                                      capture_output=True, timeout=2)
-                success = result.returncode == 0
-            except:
-                success = False
+            # For DNS attacks, get live count from object
+            if attack_info['type'] == 'DNS' and 'object' in attack_info:
+                try:
+                    packets = attack_info['object'].packets_spoofed
+                except:
+                    packets = 0
+            
+            # Attack is successful if running and not blocked
+            success = attack_info['status'] == 'running' and not is_blocked
             
             attacks[attack_id] = {
                 'type': attack_info['type'],
                 'target_ip': target_ip,
                 'packets_sent': packets,
-                'status': 'BLOCKED ❌' if is_blocked else attack_info['status'],
+                'status': attack_info['status'],
                 'is_blocked': is_blocked,
-                'success': success,  # Target is reachable (attack working)
+                'success': success,  # Running and not blocked = working
             }
         
         return jsonify({'attacks': attacks}), 200

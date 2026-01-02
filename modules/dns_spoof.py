@@ -175,15 +175,29 @@ class DNSSpoofer:
     def _sniff_loop(self):
         """Sniff DNS packets in loop"""
         try:
+            self.logger.info(f"Starting DNS sniffer on interface {self.interface} for port 53")
             sniff(
                 iface=self.interface,
                 filter="udp port 53",
                 prn=self._packet_callback,
                 store=False,
-                stop_filter=lambda _: not self.is_running
+                stop_filter=lambda _: not self.is_running,
+                timeout=None
             )
         except Exception as e:
             self.logger.error(f"Sniff error: {e}")
+            self.logger.info("Trying fallback: sniffing all UDP packets on port 53")
+            try:
+                sniff(
+                    iface=self.interface,
+                    filter="udp and (port 53 or src port 53 or dst port 53)",
+                    prn=self._packet_callback,
+                    store=False,
+                    stop_filter=lambda _: not self.is_running,
+                    timeout=None
+                )
+            except Exception as e2:
+                self.logger.error(f"Fallback sniff also failed: {e2}")
         finally:
             self.logger.info("DNS spoof sniff loop stopped")
     
