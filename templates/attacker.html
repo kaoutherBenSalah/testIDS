@@ -251,6 +251,10 @@
             opt.textContent = label;
             select.appendChild(opt);
         });
+        // Auto-select first interface
+        if (select.options.length > 0) {
+            select.selectedIndex = 0;
+        }
     }
 
     function autoFillRange() {
