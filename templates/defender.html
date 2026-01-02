@@ -27,7 +27,7 @@
     .legend-item strong { color:#fff; }
     .legend-item.arp-legend { border-left-color:#e0b347; }
     .legend-item.syn-legend { border-left-color:#ff9f9f; }
-    .legend-item.dns-legend { border-left-color:#6cf28b; }
+    .legend-item.port-scan-legend { border-left-color:#f4b400; }
     .blocked-ips-list { display:flex; flex-direction:column; gap:8px; }
     .blocked-ip-tag { padding:6px 10px; background:#361015; border:1px solid #e45858; border-radius:4px; color:#ff9f9f; font-size:0.9rem; display:flex; justify-content:space-between; align-items:center; }
     .btn-unblock { background:transparent; border:1px solid #ff9f9f; color:#ff9f9f; padding:2px 6px; border-radius:3px; cursor:pointer; font-size:0.8rem; }
@@ -71,8 +71,8 @@
             <h3 class="card-header">Detections</h3>
             <div class="card-body">
                 <p>🔍 ARP scans: <strong id="stat-arp">0</strong></p>
-                <p>⚡ SYN events: <strong id="stat-syn">0</strong></p>
-                <p>🌐 DNS spoofs: <strong id="stat-dns">0</strong></p>
+                <p>💥 SYN floods: <strong id="stat-syn">0</strong></p>
+                <p>🔎 Port scans: <strong id="stat-port-scan">0</strong></p>
                 <p class="muted" id="overview-message">Ready.</p>
             </div>
         </div>
@@ -82,13 +82,13 @@
         <h3 class="card-header">📋 What Each Detection Means</h3>
         <div class="detection-legend">
             <div class="legend-item arp-legend">
-                <strong>🔍 ARP SCAN</strong>: Attacker sends multiple ARP requests to discover network devices
+                <strong>🔍 ARP SPOOF</strong>: Attacker poisons ARP cache to intercept network traffic (Man-in-the-Middle attack)
             </div>
             <div class="legend-item syn-legend">
-                <strong>⚡ SYN FLOOD</strong>: Attacker rapidly sends SYN packets (500+ in 10 seconds) from 20+ different sources to overwhelm the system
+                <strong>💥 SYN FLOOD</strong>: Attacker floods target with SYN packets (150+ in 10s from 15+ sources) to exhaust connection resources
             </div>
-            <div class="legend-item dns-legend">
-                <strong>🌐 DNS SPOOF</strong>: Attacker intercepts DNS queries and sends fake IP addresses, redirecting you to their server
+            <div class="legend-item port-scan-legend">
+                <strong>🔎 PORT SCAN</strong>: Attacker probes multiple ports (10+ in 10s) to discover open services before launching attacks
             </div>
         </div>
     </div>
@@ -175,12 +175,12 @@
             </div>
         </div>
         <div class="card">
-            <h3 class="card-header">🔧 Advanced</h3>
+            <h3 class="card-header">🔧 Detection Settings</h3>
             <div class="card-body">
-                <p class="muted"><strong>DNS Whitelisted Sources:</strong></p>
-                <p class="muted" style="font-size:0.85rem;">8.8.8.8, 8.8.4.4, 1.1.1.1, 1.0.0.1</p>
-                <p class="muted" style="margin-top:12px;"><strong>Auto-Learning:</strong></p>
-                <p class="muted" style="font-size:0.85rem;">IDS learns legitimate DNS mappings from whitelisted sources and alerts on spoofed responses only.</p>
+                <p class="muted"><strong>SYN Flood Threshold:</strong></p>
+                <p class="muted" style="font-size:0.85rem;">150 SYNs from 15+ sources in 10 seconds</p>
+                <p class="muted" style="margin-top:12px;"><strong>Port Scan Threshold:</strong></p>
+                <p class="muted" style="font-size:0.85rem;">10+ unique ports scanned in 10 seconds</p>
             </div>
         </div>
     </div>
