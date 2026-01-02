@@ -244,7 +244,18 @@ async function ackAlert(id) {
 
 async function blockAlertTarget(alert) {
     const details = alert.details || {};
-    await blockIp(details.dst_ip || details.ip || null, details.mac || null, alert.id);
+    const alertType = (alert.type || '').toUpperCase();
+    
+    // For SYN flood and port scans, block the source IP (attacker)
+    // For other alerts, block the dest IP or fallback to IP
+    let targetIp = null;
+    if (alertType.includes('SYN_FLOOD') || alertType.includes('PORT_SCAN')) {
+        targetIp = details.src_ip || details.dst_ip || details.ip;
+    } else {
+        targetIp = details.dst_ip || details.src_ip || details.ip;
+    }
+    
+    await blockIp(targetIp, details.mac || null, alert.id);
 }
 
 async function blockIp(ip, mac, alertId = null) {

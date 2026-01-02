@@ -194,15 +194,24 @@ class IDSMonitor:
                 and ts >= cooldown_until
             ):
                 self.stats["syn_events"] += 1  # Increment ONLY when alert is raised
+                
+                # Find the most frequent source IP (likely the attacker's machine)
+                source_counts = {}
+                for _, src in filtered:
+                    source_counts[src] = source_counts.get(src, 0) + 1
+                top_source = max(source_counts, key=source_counts.get) if source_counts else "unknown"
+                
                 summary = (
                     f"SYN FLOOD: {syn_count} SYNs to {dst_ip} in {self.syn_window_sec}s "
-                    f"from {unique_sources} sources"
+                    f"from {unique_sources} sources (primary: {top_source})"
                 )
                 details = {
                     "dst_ip": dst_ip,
+                    "src_ip": top_source,  # Primary attacker to block
                     "syn_count": syn_count,
                     "window_seconds": self.syn_window_sec,
                     "unique_sources": unique_sources,
+                    "top_sources": list(source_counts.keys())[:5],  # Top 5 source IPs
                 }
                 self._raise_alert("SYN_FLOOD_DETECTED", summary, "critical", details)
                 self.alert_cooldowns[dst_ip] = ts + self.syn_window_sec
