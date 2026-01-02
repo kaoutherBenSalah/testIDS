@@ -196,10 +196,9 @@ async function startIds() {
         const payload = {
             interface: document.getElementById('ids-interface').value || null,
             network_range: document.getElementById('ids-range').value || null,
-            arp_interval: Number(document.getElementById('ids-arp').value || 20),
-            syn_threshold: Number(document.getElementById('ids-syn-th').value || 150),
+            syn_threshold: Number(document.getElementById('ids-syn-th').value || 500),
             syn_window_sec: Number(document.getElementById('ids-syn-win').value || 10),
-            syn_unique_sources: Number(document.getElementById('ids-syn-unique').value || 15),
+            syn_unique_sources: Number(document.getElementById('ids-syn-unique').value || 20),
         };
         console.log('IDS payload:', payload);
 
