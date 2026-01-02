@@ -12,7 +12,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Callable, Dict, List, Optional
 
-from scapy.all import ARP, Ether, IP, TCP, UDP, DNS, DNSQR, DNSRR, srp, sniff
+from scapy.all import ARP, Ether, IP, TCP, UDP, srp, sniff
 
 from utils.logger import get_logger
 from utils.network_utils import get_default_network_range
@@ -87,7 +87,7 @@ class IDSMonitor:
         self.threads = [
             threading.Thread(target=self._arp_spoof_sniff_loop, name="IDS-ARP-SPOOF", daemon=True),
             threading.Thread(target=self._syn_sniff_loop, name="IDS-SYN", daemon=True),
-            threading.Thread(target=self._dns_sniff_loop, name="IDS-DNS", daemon=True),
+
         ]
         for t in self.threads:
             t.start()
@@ -157,21 +157,6 @@ class IDSMonitor:
                 )
             except Exception as exc:  # noqa: BLE001
                 self.logger.error(f"ARP spoof sniff failed: {exc}")
-                time.sleep(2)
-
-    def _dns_sniff_loop(self):
-        """Detect DNS spoofing by monitoring DNS responses"""
-        while self.running.is_set():
-            try:
-                sniff(
-                    iface=self.interface,
-                    filter="udp port 53",
-                    prn=self._handle_dns_packet,
-                    store=False,
-                    timeout=3,
-                )
-            except Exception as exc:  # noqa: BLE001
-                self.logger.error(f"DNS sniff failed: {exc}")
                 time.sleep(2)
 
     # ------------------------------------------------------------------

@@ -1,5 +1,5 @@
 """
-Attack Routes - ARP Spoofing, SYN Flooding, DNS Spoofing
+Attack Routes - ARP Spoofing, SYN Flooding
 Flask Blueprint for attack endpoints
 """
 
@@ -14,7 +14,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from modules.arp_spoof import ARPSpoofer
 from modules.syn_flood import SYNFlooder
-from modules.dns_spoof_nfqueue import DNSSpooferNFQueue
 import models
 from models import active_attacks, log_attack
 
@@ -242,121 +241,6 @@ def stop_syn_attack():
 
 
 # ============================================================================
-# DNS SPOOFING ENDPOINTS
-# ============================================================================
-
-@attacks_bp.route('/dns/start', methods=['POST'])
-@require_attacker
-def start_dns_attack():
-    """Start DNS spoofing server targeting specific victim"""
-    try:
-        data = request.get_json()
-        victim_ip = data.get('victim_ip')
-        attacker_ip = data.get('attacker_ip')
-        target_domains = data.get('target_domains', ['google.com', 'facebook.com'])
-        interface = data.get('interface')
-        
-        # Validate
-        if not victim_ip:
-            return jsonify({'error': 'Missing parameter: victim_ip'}), 400
-        if not attacker_ip:
-            return jsonify({'error': 'Missing parameter: attacker_ip'}), 400
-        
-        # Create unique attack ID (victim-specific)
-        attack_id = f"dns_{victim_ip}_{attacker_ip}"
-        
-        # Check if already running
-        if attack_id in active_attacks:
-            return jsonify({'error': 'DNS attack on this victim already running'}), 400
-        
-        # Log the attack startup
-        import sys
-        print(f"\n🌐 DNS ATTACK STARTING:", file=sys.stderr)
-        print(f"   Victim IP: {victim_ip}", file=sys.stderr)
-        print(f"   Attacker IP: {attacker_ip}", file=sys.stderr)
-        print(f"   Domains: {target_domains}", file=sys.stderr)
-        print(f"   Interface: {interface or 'default'}", file=sys.stderr)
-        
-        # Create DNS spoofer using NetfilterQueue
-        spoofer = DNSSpooferNFQueue(
-            attacker_ip=attacker_ip,
-            target_domains=target_domains,
-            victim_ip=victim_ip,
-            queue_num=0
-        )
-        
-        # Start spoofer in background thread
-        def run_spoofer():
-            try:
-                spoofer.start_attack()
-            except Exception as e:
-                print(f"❌ DNS Spoofer Error: {e}", file=sys.stderr)
-        
-        thread = threading.Thread(target=run_spoofer, daemon=True)
-        thread.start()
-        
-        # Store in memory
-        active_attacks[attack_id] = {
-            'object': spoofer,
-            'type': 'DNS',
-            'victim_ip': victim_ip,
-            'attacker_ip': attacker_ip,
-            'target_domains': target_domains,
-            'target_ip': victim_ip,  # For UI consistency
-            'packets_spoofed': 0,
-            'status': 'running'
-        }
-        
-        # Log attack
-        log_attack('DNS_SPOOFING', victim_ip, ','.join(target_domains), 'running')
-        
-        return jsonify({
-            'status': 'started',
-            'attack_id': attack_id,
-            'message': f'DNS spoofing server started: {victim_ip} → {attacker_ip} for {", ".join(target_domains)}',
-            'victim_ip': victim_ip,
-            'target_domains': target_domains
-        }), 200
-    
-    except Exception as e:
-        import sys
-        print(f"❌ DNS ATTACK ERROR: {e}", file=sys.stderr)
-        return jsonify({'error': str(e)}), 500
-
-
-@attacks_bp.route('/dns/stop', methods=['POST'])
-@require_attacker
-def stop_dns_attack():
-    """Stop DNS spoofing server"""
-    try:
-        data = request.get_json()
-        attack_id = data.get('attack_id') or list(
-            [k for k, v in active_attacks.items() if v['type'] == 'DNS']
-        )[0] if any(v['type'] == 'DNS' for v in active_attacks.values()) else None
-        
-        if not attack_id or attack_id not in active_attacks:
-            return jsonify({'error': 'Attack not found'}), 404
-        
-        attack_info = active_attacks[attack_id]
-        spoofer = attack_info['object']
-        
-        # Stop spoofer
-        spoofer.stop_attack()
-        
-        # Update memory
-        del active_attacks[attack_id]
-        
-        return jsonify({
-            'status': 'stopped',
-            'message': f'DNS spoofing stopped',
-            'packets_spoofed': spoofer.packets_spoofed
-        }), 200
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-# ============================================================================
 # ATTACK STATISTICS
 # ============================================================================
 
@@ -371,15 +255,8 @@ def get_attack_stats():
             target_ip = attack_info.get('target_ip') or attack_info.get('victim_ip') or attack_info.get('attacker_ip')
             is_blocked = target_ip in models.blocked_ips
             
-            # Get packet count - DNS attacks track packets_spoofed, others track packets_sent
-            packets = attack_info.get('packets_sent', 0) or attack_info.get('packets_spoofed', 0)
-            
-            # For DNS attacks, get live count from object
-            if attack_info['type'] == 'DNS' and 'object' in attack_info:
-                try:
-                    packets = attack_info['object'].packets_spoofed
-                except:
-                    packets = 0
+            # Get packet count
+            packets = attack_info.get('packets_sent', 0)
             
             # Attack is successful if running and not blocked
             success = attack_info['status'] == 'running' and not is_blocked
@@ -390,73 +267,12 @@ def get_attack_stats():
                 'packets_sent': packets,
                 'status': attack_info['status'],
                 'is_blocked': is_blocked,
-                'success': success,  # Running and not blocked = working
+                'success': success,
             }
-            
-            # Add DNS-specific fields
-            if attack_info['type'] == 'DNS':
-                attack_stat['victim_ip'] = attack_info.get('victim_ip')
-                attack_stat['attacker_ip'] = attack_info.get('attacker_ip')
-                attack_stat['target_domains'] = attack_info.get('target_domains', [])
             
             attacks[attack_id] = attack_stat
         
         return jsonify({'attacks': attacks}), 200
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@attacks_bp.route('/dns/test', methods=['GET'])
-@require_attacker
-def test_dns_server():
-    """Test if DNS server is running and can receive queries"""
-    try:
-        import socket
-        import sys
-        
-        dns_attacks = [v for v in active_attacks.values() if v['type'] == 'DNS']
-        
-        if not dns_attacks:
-            return jsonify({
-                'status': 'no_attack',
-                'message': 'No DNS attack running'
-            }), 200
-        
-        attack = dns_attacks[0]
-        server = attack['object']
-        
-        test_result = {
-            'attack_running': server.is_running,
-            'packets_spoofed': server.packets_spoofed,
-            'attacker_ip': server.attacker_ip,
-            'target_domains': list(server.target_domains),
-            'iptables_rules_added': server.iptables_rules_added,
-            'message': 'DNS server is running'
-        }
-        
-        # Check if port 53 is listening
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.settimeout(0.5)
-            # Try to send a test DNS query
-            test_query = b'\x00\x01\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x06google\x03com\x00\x00\x01\x00\x01'
-            s.sendto(test_query, (server.attacker_ip, 53))
-            
-            try:
-                response, _ = s.recvfrom(512)
-                test_result['port_53_test'] = 'Received response'
-                test_result['test_success'] = True
-            except socket.timeout:
-                test_result['port_53_test'] = 'No response on port 53'
-                test_result['test_success'] = False
-            finally:
-                s.close()
-        except Exception as e:
-            test_result['port_53_test'] = f'Test failed: {e}'
-            test_result['test_success'] = False
-        
-        return jsonify(test_result), 200
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
