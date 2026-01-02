@@ -161,23 +161,38 @@ class IDSMonitor:
     # ------------------------------------------------------------------
     # Detection logic (PASSIVE - no network scanning)
     # ------------------------------------------------------------------
-    def _detect_local_attacker(self, spoofed_sources: set) -> Optional[str]:
+    def _detect_local_attacker(self, spoofed_sources: set, dst_ip: str) -> Optional[str]:
         """
         Detect which local machine is generating spoofed packets.
-        If most sources are outside our local subnet (spoofed), someone local is spoofing.
+        Strategy: Check the ARP table and port scanner history to find which
+        local IP has been active and is most likely the attacker.
         """
-        # Parse network to determine local subnet
         try:
             import ipaddress
             network = ipaddress.ip_network(self.network_range, strict=False)
-            local_ips = {ip for ip in spoofed_sources if ipaddress.ip_address(ip) in network}
-        except:
-            local_ips = set()
-        
-        # If we have spoofed sources but few local ones, assume one local IP is the attacker
-        # by finding the one generating the most traffic
-        if len(spoofed_sources) > 10 and len(local_ips) > 0:
-            return list(local_ips)[0]  # Return first local IP as suspect
+            
+            # Get all local IPs that have been seen in port scan history
+            # (port scanners typically probe before launching attacks)
+            local_suspects = {ip for ip in self.port_scan_tracker.keys() 
+                            if ipaddress.ip_address(ip) in network}
+            
+            # If we found local IPs that were actively scanning, one of them is likely the attacker
+            if local_suspects:
+                # Return the one with most port scan activity
+                suspect = max(local_suspects, 
+                            key=lambda ip: len(self.port_scan_tracker.get(ip, [])))
+                return suspect
+            
+            # Fallback: Check if any known local IPs sent unusual traffic
+            # Look for IPs in the 192.168.111.x range that we've seen
+            for src_ip in self.arp_table.keys():
+                try:
+                    if ipaddress.ip_address(src_ip) in network:
+                        return src_ip
+                except:
+                    pass
+        except Exception as e:
+            self.logger.debug(f"Attacker detection error: {e}")
         
         return None
 
@@ -220,7 +235,7 @@ class IDSMonitor:
                 all_sources = {s for _, s in filtered}
                 
                 # Detect the local machine that's generating these spoofed packets
-                local_attacker = self._detect_local_attacker(all_sources)
+                local_attacker = self._detect_local_attacker(all_sources, dst_ip)
                 
                 # Find the most frequent source IP for reference
                 source_counts = {}
