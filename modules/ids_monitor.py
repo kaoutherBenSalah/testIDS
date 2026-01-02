@@ -63,6 +63,7 @@ class IDSMonitor:
         self.syn_history: Dict[str, List[tuple]] = defaultdict(list)  # dst_ip -> [(ts, src_ip)]
         self.arp_table: Dict[str, str] = {}  # ip -> mac (baseline learned mappings)
         self.port_scan_tracker: Dict[str, List[tuple]] = defaultdict(list)  # src_ip -> [(ts, dst_port)]
+        self.local_attackers: Dict[str, int] = defaultdict(int)  # Track local IPs sending spoofed packets (suspicious pattern)
 
         self.stats = {
             "started_at": None,
@@ -160,6 +161,26 @@ class IDSMonitor:
     # ------------------------------------------------------------------
     # Detection logic (PASSIVE - no network scanning)
     # ------------------------------------------------------------------
+    def _detect_local_attacker(self, spoofed_sources: set) -> Optional[str]:
+        """
+        Detect which local machine is generating spoofed packets.
+        If most sources are outside our local subnet (spoofed), someone local is spoofing.
+        """
+        # Parse network to determine local subnet
+        try:
+            import ipaddress
+            network = ipaddress.ip_network(self.network_range, strict=False)
+            local_ips = {ip for ip in spoofed_sources if ipaddress.ip_address(ip) in network}
+        except:
+            local_ips = set()
+        
+        # If we have spoofed sources but few local ones, assume one local IP is the attacker
+        # by finding the one generating the most traffic
+        if len(spoofed_sources) > 10 and len(local_ips) > 0:
+            return list(local_ips)[0]  # Return first local IP as suspect
+        
+        return None
+
     def _handle_tcp_packet(self, packet):
         """Handle TCP packets for both SYN flood and port scan detection."""
         if not packet.haslayer(IP) or not packet.haslayer(TCP):
@@ -195,7 +216,13 @@ class IDSMonitor:
             ):
                 self.stats["syn_events"] += 1  # Increment ONLY when alert is raised
                 
-                # Find the most frequent source IP (likely the attacker's machine)
+                # Collect all source IPs from this attack window
+                all_sources = {s for _, s in filtered}
+                
+                # Detect the local machine that's generating these spoofed packets
+                local_attacker = self._detect_local_attacker(all_sources)
+                
+                # Find the most frequent source IP for reference
                 source_counts = {}
                 for _, src in filtered:
                     source_counts[src] = source_counts.get(src, 0) + 1
@@ -203,15 +230,16 @@ class IDSMonitor:
                 
                 summary = (
                     f"SYN FLOOD: {syn_count} SYNs to {dst_ip} in {self.syn_window_sec}s "
-                    f"from {unique_sources} sources (primary: {top_source})"
+                    f"from {unique_sources} sources (attacker: {local_attacker or 'unknown'})"
                 )
                 details = {
                     "dst_ip": dst_ip,
-                    "src_ip": top_source,  # Primary attacker to block
+                    "src_ip": local_attacker or top_source,  # Block the LOCAL attacker, not spoofed IP
+                    "local_attacker_ip": local_attacker,  # Actual local machine doing the spoofing
                     "syn_count": syn_count,
                     "window_seconds": self.syn_window_sec,
                     "unique_sources": unique_sources,
-                    "top_sources": list(source_counts.keys())[:5],  # Top 5 source IPs
+                    "top_sources": list(source_counts.keys())[:5],  # Spoofed source IPs for reference
                 }
                 self._raise_alert("SYN_FLOOD_DETECTED", summary, "critical", details)
                 self.alert_cooldowns[dst_ip] = ts + self.syn_window_sec

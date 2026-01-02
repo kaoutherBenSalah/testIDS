@@ -246,11 +246,14 @@ async function blockAlertTarget(alert) {
     const details = alert.details || {};
     const alertType = (alert.type || '').toUpperCase();
     
-    // For SYN flood and port scans, block the source IP (attacker)
-    // For other alerts, block the dest IP or fallback to IP
+    // For SYN flood: block the LOCAL attacker machine (not the spoofed sources)
+    // For port scans: block the source IP
     let targetIp = null;
-    if (alertType.includes('SYN_FLOOD') || alertType.includes('PORT_SCAN')) {
-        targetIp = details.src_ip || details.dst_ip || details.ip;
+    if (alertType.includes('SYN_FLOOD')) {
+        // Use local_attacker_ip if detected, otherwise fall back to src_ip
+        targetIp = details.local_attacker_ip || details.src_ip || details.dst_ip;
+    } else if (alertType.includes('PORT_SCAN')) {
+        targetIp = details.src_ip || details.dst_ip;
     } else {
         targetIp = details.dst_ip || details.src_ip || details.ip;
     }
