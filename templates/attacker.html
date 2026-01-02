@@ -475,19 +475,26 @@
                 for (const [id, attack] of Object.entries(data.attacks)) {
                     const typeIcon = attack.type === 'ARP' ? '🎭' : attack.type === 'DNS' ? '🌐' : '💥';
                     const isBlocked = attack.is_blocked;
-                    const statusColor = isBlocked ? '#f00' : (attack.status === 'running' ? '#0f0' : '#f80');
-                    const statusText = isBlocked ? 'BLOCKED ❌' : attack.status.toUpperCase();
+                    const isSuccess = attack.success;
+                    const statusColor = isBlocked ? '#f00' : (isSuccess ? '#0f0' : '#f80');
+                    const statusText = isBlocked ? 'BLOCKED ❌' : (isSuccess ? '✅ SUCCESS' : attack.status.toUpperCase());
                     
-                    html += `<div style="border: 1px solid #333; padding: 1rem; margin-bottom: 0.75rem; border-radius: 4px; background: ${isBlocked ? '#2a1010' : '#1a1a2e'};">`;
+                    html += `<div style="border: 1px solid #333; padding: 1rem; margin-bottom: 0.75rem; border-radius: 4px; background: ${isBlocked ? '#2a1010' : (isSuccess ? '#1a2a1a' : '#1a1a2e')};">`;
                     html += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">`;
-                    html += `  <div style="color: ${isBlocked ? '#ff6b6b' : '#0ff'}; font-weight: bold; font-size: 1.1rem;">${typeIcon} ${attack.type} Attack</div>`;
+                    html += `  <div style="color: ${isBlocked ? '#ff6b6b' : (isSuccess ? '#0f0' : '#0ff')}; font-weight: bold; font-size: 1.1rem;">${typeIcon} ${attack.type} Attack</div>`;
                     html += `  <div style="color: ${statusColor}; font-weight: bold;">● ${statusText}</div>`;
                     html += `</div>`;
                     html += `<div style="color: #aaa; font-size: 0.9rem; margin-left: 1rem;">`;
-                    html += `  🎯 Target: <span style="color: ${isBlocked ? '#ff6b6b' : '#fa4'};">${attack.target_ip}</span>`;
+                    html += `  🎯 Target: <span style="color: ${isBlocked ? '#ff6b6b' : (isSuccess ? '#0f0' : '#fa4')};">${attack.target_ip}</span>`;
                     
                     if (attack.packets_sent) {
                         html += `<br>📊 Packets sent: <span style="color: #0f0;">${attack.packets_sent.toLocaleString()}</span>`;
+                    }
+                    
+                    if (isSuccess) {
+                        html += `<br><span style="color: #0f0; font-weight: bold;">✅ Target responding (attack working!)</span>`;
+                    } else if (!isBlocked) {
+                        html += `<br><span style="color: #f80;">⏳ Waiting for target response...</span>`;
                     }
                     
                     if (isBlocked) {
