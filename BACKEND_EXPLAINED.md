@@ -78,7 +78,7 @@ This file summarizes how the backend works, where key functions live, and how re
 - `start_sniffing(filter_str=None, count=0)`: launches Scapy sniff in thread; stores analyzed packets in memory (max ~1000).
 - `stop_sniffing()`: sets flag to stop sniff loop; closes writer if used.
 - `get_packets(limit)`: returns recent captured packet infos.
-- `analyze_packet(packet)`: extracts protocol, src/dst, ports, length, info (HTTP/DNS/ARP/ICMP/TCP/UDP).
+- `analyze_packet(packet)`: extracts protocol, src/dst, ports, length, info (HTTP/ARP/ICMP/TCP/UDP).
 
 ### modules/ids_monitor.py (IDSMonitor)
 - Threads: ARP scan loop + SYN sniff loop.

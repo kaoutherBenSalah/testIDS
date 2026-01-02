@@ -12,16 +12,14 @@
 ## 🎯 How It Works
 
 ### Attacks (Attacker Side - Kali Linux)
-1. **ARP Spoofing** - Poisons ARP tables to intercept traffic
-2. **DNS Spoofing** - Sends fake DNS responses to redirect domains
-3. **SYN Flooding** - Sends massive TCP SYN packets (DoS attack)
+1. **ARP Spoofing** - Poisons ARP tables to intercept traffic (MITM)
+2. **SYN Flooding** - Floods target with SYN packets to exhaust resources (DoS)
 
 ### Detection (Defender Side)
-The defender **passively detects attacks on itself**:
-- **ARP Spoof Detection** - Detects when ARP table changes unexpectedly
-- **DNS Spoof Detection** - Detects fake DNS responses
-- **SYN Flood Detection** - Detects abnormal SYN packet spike
-- **Port Scan Detection** - Detects rapid connection attempts
+The defender **passively detects attacks on the network**:
+- **ARP Spoof Detection** - Detects when ARP table is poisoned
+- **SYN Flood Detection** - Detects abnormal SYN packet spike (150+ from 15+ sources)
+- **Port Scan Detection** - Detects rapid port scanning (10+ ports in 10s)
 
 ### Blocking
 When an attack is detected:
@@ -147,23 +145,18 @@ Interval: 2 (seconds between spoofs)
 Interface: eth0 (or your network interface)
 ```
 
-#### Option B: DNS Spoofing
+#### Option B: SYN Flooding
 ```
-Attacker IP: 192.168.1.100 (Your IP)
-Target Domains: google.com,facebook.com (comma-separated)
-Interface: eth0 (or your network interface)
-```
-
-#### Option C: SYN Flooding
-```
-Target IP: 192.168.1.101 (Defender's IP)
-Port: 80 (any port)
-Duration: 60 (seconds)
-Threads: 10
+Target IPs: 192.168.1.101 (Defender's IP) - select from scan results
+Target Ports: 22 (SSH) or 80 (HTTP) - any open port
+Threads: 50 (concurrent attack threads)
+Rate Limit: 0 (unlimited packets/sec)
+Random Bots: 100 (simulates botnet with 100 fake IPs)
+Enable IP Spoofing: ✓ (uses scanned IPs as spoofed sources)
 ```
 
-3. **Start Attack** - Click "Start [Attack Type]"
-4. **Watch Defender Dashboard** - See the alert pop up
+3. **Start Attack** - Click "Start" button
+4. **Watch Defender Dashboard** - See CRITICAL alert within seconds
 5. **Stop Attack** - Click "Stop"
 
 ---
@@ -195,18 +188,23 @@ python app.py (as Admin)    # Windows
 1. Run as Administrator
 2. Manually add firewall rules in Windows Defender Firewall
 
-### DNS Not Resolving Correctly
-**Problem:** DNS spoof might not intercept if DNS cached
+### SYN Flood Not Causing Effect
+**Problem:** SYN flood attack runs but victim shows no impact
 **Solution:**
-1. Clear DNS cache:
+1. Target an **open port** on victim (SSH on 22, HTTP on 80)
+2. Start service on victim first:
    ```bash
-   # Windows
-   ipconfig /flushdns
-   
-   # Linux
-   sudo systemctl restart systemd-resolved
+   # Start HTTP server on port 80
+   sudo python3 -m http.server 80
    ```
-2. Restart browser or use `nslookup` to test
+3. Increase attack intensity:
+   - Threads: 50
+   - Random Bots: 100+
+   - Rate Limit: 0 (unlimited)
+4. Monitor victim's SYN queue:
+   ```bash
+   watch -n 1 'netstat -tan | grep SYN_RECV | wc -l'
+   ```
 
 ---
 
@@ -214,10 +212,9 @@ python app.py (as Admin)    # Windows
 
 | Alert Type | Severity | What It Means |
 |------------|----------|---------------|
-| ARP_SPOOF_DETECTED | CRITICAL | Someone changed their MAC address for your IP |
-| DNS_SPOOF_DETECTED | CRITICAL | Someone sent fake DNS responses |
-| SYN_FLOOD_DETECTED | CRITICAL | Someone sent abnormal SYN packets |
-| PORT_SCAN_DETECTED | HIGH | Someone scanned many ports rapidly |
+| ARP_SPOOF_DETECTED | CRITICAL | ARP cache poisoned - MITM attack detected |
+| SYN_FLOOD_DETECTED | CRITICAL | 150+ SYNs from 15+ sources - DoS attack |
+| PORT_SCAN_DETECTED | HIGH | 10+ ports scanned in 10s - reconnaissance |
 
 ---
 
@@ -238,18 +235,17 @@ testIDS/
 ├── models.py             # User/alert models
 ├── modules/
 │   ├── arp_spoof.py      # ARP spoofing attack
-│   ├── dns_spoof.py      # DNS spoofing attack
-│   ├── syn_flood.py      # SYN flood attack
-│   └── ids_monitor.py    # IDS detection engine
+│   ├── syn_flood.py      # SYN flood attack (multi-threaded, IP spoofing)
+│   └── ids_monitor.py    # IDS detection engine (ARP/SYN/Port Scan)
 ├── routes/
-│   ├── attacks.py        # Attack endpoints
+│   ├── attacks.py        # Attack API endpoints
 │   └── ids.py            # IDS control endpoints
 ├── templates/
-│   ├── attacker.html     # Attacker UI
-│   ├── defender.html     # Defender UI
+│   ├── attacker.html     # Attacker dashboard
+│   ├── defender.html     # Defender dashboard
 │   └── login.html        # Login page
 └── static/js/
-    └── defender.js       # Dashboard logic
+    └── defender.js       # Real-time detection updates
 ```
 
 ---
@@ -257,12 +253,15 @@ testIDS/
 ## 🧪 Testing Checklist
 
 - [ ] Both machines can ping each other
-- [ ] Can login to both dashboards
-- [ ] Start IDS on defender (should say "running")
-- [ ] Start ARP spoof on attacker (should send packets)
-- [ ] Defender dashboard shows ARP alert
-- [ ] Click "Block" button to block attacker
-- [ ] Test DNS spoof and SYN flood similarly
+- [ ] Can login to both dashboards (attacker/attack123, defender/defend123)
+- [ ] Defender: Start IDS (should say "running")
+- [ ] Attacker: Scan network (discover devices)
+- [ ] Attacker: Start ARP spoof on defender's IP
+- [ ] Defender: See ARP SPOOF alert (CRITICAL)
+- [ ] Attacker: Start SYN flood on port 22 with 100 random bots
+- [ ] Defender: See SYN FLOOD alert (CRITICAL)
+- [ ] Defender: Block attacker IP via firewall
+- [ ] Verify attacks stop working after block
 
 ---
 

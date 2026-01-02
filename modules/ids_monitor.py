@@ -41,16 +41,16 @@ class IDSMonitor:
         self.syn_unique_sources = max(5, syn_unique_sources)
         self.alert_sink = alert_sink
 
-        # Whitelist: trusted IPs (gateway, servers, legitimate DNS)
+        # Whitelist: trusted IPs (gateway, legitimate servers)
         self.whitelist = {
             '192.168.111.1',      # Gateway
             '192.168.111.2', 
             '192.168.111.254', 
             '192.168.111.12',
-            '8.8.8.8',            # Google DNS
-            '8.8.4.4',            # Google DNS
-            '1.1.1.1',            # Cloudflare DNS
-            '1.0.0.1',            # Cloudflare DNS
+            '8.8.8.8',            # Google (common external IP)
+            '8.8.4.4',            
+            '1.1.1.1',            # Cloudflare
+            '1.0.0.1',
             '127.0.0.1',          # Localhost
             '::1'                 # IPv6 localhost
         }
@@ -63,7 +63,6 @@ class IDSMonitor:
         self.syn_history: Dict[str, List[tuple]] = defaultdict(list)  # dst_ip -> [(ts, src_ip)]
         self.arp_table: Dict[str, str] = {}  # ip -> mac (baseline learned mappings)
         self.port_scan_tracker: Dict[str, List[tuple]] = defaultdict(list)  # src_ip -> [(ts, dst_port)]
-        self.dns_cache: Dict[str, str] = {}  # domain -> expected_ip (legitimate mappings)
 
         self.stats = {
             "started_at": None,
@@ -71,7 +70,6 @@ class IDSMonitor:
             "alerts": 0,
             "arp_scans": 0,
             "syn_events": 0,
-            "dns_spoofs": 0,
             "port_scans": 0,
         }
 
@@ -275,66 +273,6 @@ class IDSMonitor:
                 self._raise_alert("ARP_SPOOF_DETECTED", summary, "critical", details)
                 self.alert_cooldowns[cooldown_key] = ts + 60
                 self.logger.warning(f"ARP SPOOF: {src_ip} MAC changed {expected_mac} -> {src_mac}")
-
-    def _handle_dns_packet(self, packet):
-        """Handle DNS packets for spoofing detection"""
-        try:
-            if not packet.haslayer(DNS) or not packet.haslayer(IP):
-                return
-            
-            dns_layer = packet[DNS]
-            ip_layer = packet[IP]
-            ts = time.time()
-            
-            # Only process DNS responses
-            if dns_layer.qr == 1:  # Response
-                src_ip = ip_layer.src
-                
-                # Skip whitelisted IPs (legitimate DNS servers)
-                if src_ip in self.whitelist:
-                    # Learn legitimate mappings from trusted DNS servers
-                    if dns_layer.qd and dns_layer.an:
-                        query_name = dns_layer.qd.qname.decode('utf-8').rstrip('.')
-                        for i in range(dns_layer.ancount):
-                            try:
-                                answer = dns_layer.an[i]
-                                if answer.type == 1:  # A record
-                                    self.dns_cache[query_name] = answer.rdata
-                            except (AttributeError, IndexError):
-                                continue
-                    return
-                
-                # From non-whitelisted source - check for spoofing
-                if dns_layer.qd and dns_layer.an:
-                    query_name = dns_layer.qd.qname.decode('utf-8').rstrip('.')
-                    
-                    # Only check if we have a legitimate mapping from trusted source
-                    if query_name in self.dns_cache:
-                        legitimate_ip = self.dns_cache[query_name]
-                        
-                        # Get answered IP
-                        for i in range(dns_layer.ancount):
-                            try:
-                                answer = dns_layer.an[i]
-                                if answer.type == 1:  # A record
-                                    resolved_ip = answer.rdata
-                                    
-                                    # Different IP from non-whitelisted source = spoofing
-                                    if resolved_ip != legitimate_ip:
-                                        summary = f"DNS SPOOF: {query_name} resolved to {resolved_ip} instead of {legitimate_ip}"
-                                        details = {
-                                            "domain": query_name,
-                                            "spoofed_ip": resolved_ip,
-                                            "legitimate_ip": legitimate_ip,
-                                            "source_ip": src_ip,
-                                        }
-                                        self.stats["dns_spoofs"] += 1
-                                        self._raise_alert("DNS_SPOOF_DETECTED", summary, "critical", details)
-                            except (AttributeError, IndexError):
-                                continue
-        
-        except Exception as e:
-            self.logger.error(f"Error handling DNS packet: {e}")
 
     # ------------------------------------------------------------------
     # Helpers

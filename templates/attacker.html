@@ -132,7 +132,6 @@
                         <option value="udp">UDP</option>
                         <option value="tcp port 80">HTTP</option>
                         <option value="tcp port 443">HTTPS</option>
-                        <option value="dst port 53">DNS</option>
                         <option value="port 21">FTP</option>
                         <option value="tcp port 22">SSH</option>
                         <option value="arp">ARP</option>
@@ -406,7 +405,7 @@
                     
                     if (isSuccess) {
                         html += `<br><span style="color: #0f0; font-weight: bold;">✅ Target responding (attack working!)</span>`;
-                    } else if (!isBlocked && attack.type !== 'DNS') {
+                    } else if (!isBlocked) {
                         html += `<br><span style="color: #f80;">⏳ Waiting for target response...</span>`;
                     }
                     
@@ -578,9 +577,6 @@
                     } else if (services.includes('ftp')) {
                         deviceHint = '📁 FTP Server';
                         hintColor = '#fa0';
-                    } else if (services.includes('dns')) {
-                        deviceHint = '🌍 DNS Server';
-                        hintColor = '#0af';
                     } else {
                         deviceHint = `💾 ${services.split(',')[0].toUpperCase()} Host`;
                         hintColor = '#f80';
@@ -636,8 +632,7 @@
         const victimSelect = document.getElementById('arp-victim-select');
         const gwSelect = document.getElementById('arp-gw-select');
         const synSelect = document.getElementById('syn-targets');
-        const dnsVictimSelect = document.getElementById('dns-victim-ip');
-        [victimSelect, gwSelect, synSelect, dnsVictimSelect].forEach(sel => { if (sel) sel.innerHTML = ''; });
+        [victimSelect, gwSelect, synSelect].forEach(sel => { if (sel) sel.innerHTML = ''; });
 
         scannedHosts.forEach(h => {
             // Create better label for dropdown
@@ -657,9 +652,6 @@
             }
             if (synSelect) {
                 const o3 = document.createElement('option'); o3.value = value; o3.textContent = label; synSelect.appendChild(o3);
-            }
-            if (dnsVictimSelect) {
-                const o4 = document.createElement('option'); o4.value = h.ip; o4.textContent = label; dnsVictimSelect.appendChild(o4);
             }
         });
 
