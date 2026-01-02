@@ -339,11 +339,15 @@ def get_attack_stats():
         attacks = {}
         
         for attack_id, attack_info in active_attacks.items():
+            target_ip = attack_info['target_ip']
+            is_blocked = target_ip in models.blocked_ips
+            
             attacks[attack_id] = {
                 'type': attack_info['type'],
-                'target_ip': attack_info['target_ip'],
+                'target_ip': target_ip,
                 'packets_sent': attack_info['packets_sent'],
-                'status': attack_info['status']
+                'status': 'BLOCKED ❌' if is_blocked else attack_info['status'],
+                'is_blocked': is_blocked,
             }
         
         return jsonify({'attacks': attacks}), 200

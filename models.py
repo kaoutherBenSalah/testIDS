@@ -17,6 +17,7 @@ DB_PATH.parent.mkdir(exist_ok=True)
 active_attacks = {}  # {attack_id: {'type': 'arp', 'target': '192.168.189.20', ...}}
 active_scanners = {}  # {scan_id: {'hosts': [], 'status': 'in_progress'}}
 active_sniffers = {}  # {sniffer_id: {'packets': [], 'status': 'capturing'}}
+blocked_ips = set()  # Track IPs that have been blocked
 
 # IDS runtime state
 ids_monitor = None  # Will hold a modules.ids_monitor.IDSMonitor instance

@@ -232,6 +232,7 @@ def block_entity():
             entity['blocked'] = success
             if success:
                 models.ids_stats['blocks_executed'] = models.ids_stats.get('blocks_executed', 0) + 1
+                models.blocked_ips.add(target_ip)  # Track blocked IP
                 logger.info(f"✅ Blocked {target_ip} via firewall (reason: {reason})")
             else:
                 logger.warning(f"⚠️ Failed to block {target_ip} via firewall")
