@@ -496,7 +496,16 @@
                     html += `  <div style="color: ${statusColor}; font-weight: bold;">● ${statusText}</div>`;
                     html += `</div>`;
                     html += `<div style="color: #aaa; font-size: 0.9rem; margin-left: 1rem;">`;
-                    html += `  🎯 Target: <span style="color: ${isBlocked ? '#ff6b6b' : (isSuccess ? '#0f0' : '#fa4')};">${attack.target_ip}</span>`;
+                    
+                    // Display different info based on attack type
+                    if (attack.type === 'DNS') {
+                        html += `  🎯 Victim: <span style="color: ${isBlocked ? '#ff6b6b' : (isSuccess ? '#0f0' : '#fa4')};">${attack.victim_ip}</span><br>`;
+                        html += `  🔄 Redirect To: <span style="color: #0f0;">${attack.attacker_ip}</span><br>`;
+                        html += `  📝 Domains: <span style="color: #aaa;">${(attack.target_domains || []).join(', ')}</span><br>`;
+                    } else {
+                        html += `  🎯 Target: <span style="color: ${isBlocked ? '#ff6b6b' : (isSuccess ? '#0f0' : '#fa4')};">${attack.target_ip}</span><br>`;
+                    }
+                    
                     
                     if (attack.packets_sent) {
                         html += `<br>📊 Packets sent: <span style="color: #0f0;">${attack.packets_sent.toLocaleString()}</span>`;

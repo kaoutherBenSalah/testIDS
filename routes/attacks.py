@@ -346,7 +346,7 @@ def get_attack_stats():
         attacks = {}
         
         for attack_id, attack_info in active_attacks.items():
-            target_ip = attack_info.get('target_ip') or attack_info.get('attacker_ip')
+            target_ip = attack_info.get('target_ip') or attack_info.get('victim_ip') or attack_info.get('attacker_ip')
             is_blocked = target_ip in models.blocked_ips
             
             # Get packet count - DNS attacks track packets_spoofed, others track packets_sent
@@ -362,7 +362,7 @@ def get_attack_stats():
             # Attack is successful if running and not blocked
             success = attack_info['status'] == 'running' and not is_blocked
             
-            attacks[attack_id] = {
+            attack_stat = {
                 'type': attack_info['type'],
                 'target_ip': target_ip,
                 'packets_sent': packets,
@@ -370,6 +370,14 @@ def get_attack_stats():
                 'is_blocked': is_blocked,
                 'success': success,  # Running and not blocked = working
             }
+            
+            # Add DNS-specific fields
+            if attack_info['type'] == 'DNS':
+                attack_stat['victim_ip'] = attack_info.get('victim_ip')
+                attack_stat['attacker_ip'] = attack_info.get('attacker_ip')
+                attack_stat['target_domains'] = attack_info.get('target_domains', [])
+            
+            attacks[attack_id] = attack_stat
         
         return jsonify({'attacks': attacks}), 200
     
