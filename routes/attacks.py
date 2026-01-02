@@ -1,5 +1,5 @@
 """
-Attack Routes - ARP Spoofing, SYN Flooding
+Attack Routes - ARP Spoofing, SYN Flooding, DNS Spoofing
 Flask Blueprint for attack endpoints
 """
 
@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from modules.arp_spoof import ARPSpoofer
 from modules.syn_flood import SYNFlooder
-from modules.dns_spoof import DNSSpoofer
+from modules.dns_server import DNSServer
 import models
 from models import active_attacks, log_attack
 
@@ -248,7 +248,7 @@ def stop_syn_attack():
 @attacks_bp.route('/dns/start', methods=['POST'])
 @require_attacker
 def start_dns_attack():
-    """Start DNS spoofing attack targeting specific victim"""
+    """Start DNS spoofing server targeting specific victim"""
     try:
         data = request.get_json()
         victim_ip = data.get('victim_ip')
@@ -277,15 +277,15 @@ def start_dns_attack():
         print(f"   Domains: {target_domains}", file=sys.stderr)
         print(f"   Interface: {interface or 'default'}", file=sys.stderr)
         
-        # Create DNS spoofer with victim IP filter
-        spoofer = DNSSpoofer(attacker_ip, target_domains, interface, victim_ip=victim_ip)
+        # Create DNS server with victim IP filter
+        server = DNSServer(attacker_ip, target_domains, listen_port=53, victim_ip=victim_ip)
         
-        # Start attack
-        spoofer.start_attack()
+        # Start server
+        server.start_attack()
         
         # Store in memory
         active_attacks[attack_id] = {
-            'object': spoofer,
+            'object': server,
             'type': 'DNS',
             'victim_ip': victim_ip,
             'attacker_ip': attacker_ip,
@@ -301,7 +301,7 @@ def start_dns_attack():
         return jsonify({
             'status': 'started',
             'attack_id': attack_id,
-            'message': f'DNS spoofing attack started: {victim_ip} → {attacker_ip} for {", ".join(target_domains)}',
+            'message': f'DNS spoofing server started: {victim_ip} → {attacker_ip} for {", ".join(target_domains)}',
             'victim_ip': victim_ip,
             'target_domains': target_domains
         }), 200
@@ -315,7 +315,7 @@ def start_dns_attack():
 @attacks_bp.route('/dns/stop', methods=['POST'])
 @require_attacker
 def stop_dns_attack():
-    """Stop DNS spoofing attack"""
+    """Stop DNS spoofing server"""
     try:
         data = request.get_json()
         attack_id = data.get('attack_id') or list(
@@ -326,18 +326,18 @@ def stop_dns_attack():
             return jsonify({'error': 'Attack not found'}), 404
         
         attack_info = active_attacks[attack_id]
-        spoofer = attack_info['object']
+        server = attack_info['object']
         
-        # Stop attack
-        spoofer.stop_attack()
+        # Stop server
+        server.stop_attack()
         
         # Update memory
         del active_attacks[attack_id]
         
         return jsonify({
             'status': 'stopped',
-            'message': f'DNS spoofing attack stopped',
-            'packets_spoofed': spoofer.packets_spoofed
+            'message': f'DNS spoofing server stopped',
+            'packets_spoofed': server.packets_spoofed
         }), 200
     
     except Exception as e:
