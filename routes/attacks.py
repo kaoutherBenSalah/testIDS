@@ -269,6 +269,14 @@ def start_dns_attack():
         if attack_id in active_attacks:
             return jsonify({'error': 'DNS attack on this victim already running'}), 400
         
+        # Log the attack startup
+        import sys
+        print(f"\n🌐 DNS ATTACK STARTING:", file=sys.stderr)
+        print(f"   Victim IP: {victim_ip}", file=sys.stderr)
+        print(f"   Attacker IP: {attacker_ip}", file=sys.stderr)
+        print(f"   Domains: {target_domains}", file=sys.stderr)
+        print(f"   Interface: {interface or 'default'}", file=sys.stderr)
+        
         # Create DNS spoofer with victim IP filter
         spoofer = DNSSpoofer(attacker_ip, target_domains, interface, victim_ip=victim_ip)
         
@@ -299,6 +307,8 @@ def start_dns_attack():
         }), 200
     
     except Exception as e:
+        import sys
+        print(f"❌ DNS ATTACK ERROR: {e}", file=sys.stderr)
         return jsonify({'error': str(e)}), 500
 
 

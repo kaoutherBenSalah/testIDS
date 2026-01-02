@@ -229,6 +229,7 @@
             defaultRange = data.default_range || '';
             populateInterfaceSelect('scan-interface');
             populateInterfaceSelect('arp-interface');
+            populateInterfaceSelect('dns-interface');
             populateInterfaceSelect('sniffer-interface');
             if (defaultRange) {
                 document.getElementById('scan-range').value = defaultRange;
