@@ -40,7 +40,7 @@
     <div class="header-row">
         <div>
             <h1>🛡️ Defender Command Center</h1>
-            <p class="gray">Live inventory, anomalies, and rapid blocking | User: {{ user_id or 'Not logged in' }} ({{ user_role or 'No role' }})</p>
+            <p class="gray">User: {{ user_id or 'Not logged in' }} ({{ user_role or 'No role' }})</p>
         </div>
         <div class="btn-row">
             <button class="btn" id="refresh-inventory">Refresh Network</button>
@@ -74,21 +74,6 @@
                 <p>💥 SYN floods: <strong id="stat-syn">0</strong></p>
                 <p>🔎 Port scans: <strong id="stat-port-scan">0</strong></p>
                 <p class="muted" id="overview-message">Ready.</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <h3 class="card-header">📋 What Each Detection Means</h3>
-        <div class="detection-legend">
-            <div class="legend-item arp-legend">
-                <strong>🔍 ARP SPOOF</strong>: Attacker poisons ARP cache to intercept network traffic (Man-in-the-Middle attack)
-            </div>
-            <div class="legend-item syn-legend">
-                <strong>💥 SYN FLOOD</strong>: Attacker floods target with SYN packets (150+ in 10s from 15+ sources) to exhaust connection resources
-            </div>
-            <div class="legend-item port-scan-legend">
-                <strong>🔎 PORT SCAN</strong>: Attacker probes multiple ports (10+ in 10s) to discover open services before launching attacks
             </div>
         </div>
     </div>
@@ -174,15 +159,7 @@
                 <p class="muted" id="ids-message" style="margin-top:12px;">Ready to configure.</p>
             </div>
         </div>
-        <div class="card">
-            <h3 class="card-header">🔧 Detection Settings</h3>
-            <div class="card-body">
-                <p class="muted"><strong>SYN Flood Threshold:</strong></p>
-                <p class="muted" style="font-size:0.85rem;">150 SYNs from 15+ sources in 10 seconds</p>
-                <p class="muted" style="margin-top:12px;"><strong>Port Scan Threshold:</strong></p>
-                <p class="muted" style="font-size:0.85rem;">10+ unique ports scanned in 10 seconds</p>
-            </div>
-        </div>
+
     </div>
 </div>
 
