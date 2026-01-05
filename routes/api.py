@@ -48,7 +48,6 @@ def start_scan():
         data = request.get_json()
         interface = data.get('interface')
         network_range = data.get('network_range') or get_default_network_range(interface) or '192.168.189.0/24'
-        full_scan = data.get('full_scan', False)
         
         # Create scanner
         scanner = NetworkScanner(interface=interface)
@@ -57,7 +56,7 @@ def start_scan():
         # Start scan in background
         def run_scan():
             try:
-                hosts = scanner.identify_active_machines(network_range, full_scan)
+                hosts = scanner.identify_active_machines(network_range, False)
                 active_scanners[scan_id]['hosts'] = [h.to_dict() if hasattr(h, 'to_dict') else h for h in hosts]
                 active_scanners[scan_id]['status'] = 'completed'
             except Exception as e:
@@ -153,10 +152,8 @@ def start_sniffer():
         bpf_filter = data.get('filter')
         interface = data.get('interface')
         packet_limit = int(data.get('count') or 0)
-        promisc = bool(data.get('promisc'))
         timeout = data.get('timeout')
         timeout = float(timeout) if timeout else None
-        pcap_file = data.get('pcap_file')
         
         # Create sniffer and attach callback to keep packets in memory
         sniffer = TrafficSniffer(interface=interface)
@@ -168,9 +165,9 @@ def start_sniffer():
                     filter_str=bpf_filter,
                     count=packet_limit,
                     interface=interface,
-                    promisc=promisc,
+                    promisc=False,
                     timeout=timeout,
-                    pcap_file=pcap_file,
+                    pcap_file=None,
                 )
             except Exception as e:
                 print(f"Sniffer Error: {e}")
@@ -184,7 +181,6 @@ def start_sniffer():
             'filter': bpf_filter,
             'interface': interface,
             'count': packet_limit,
-            'promisc': promisc,
             'packets': [],
             'status': 'capturing'
         }
