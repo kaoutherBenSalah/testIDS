@@ -1,7 +1,4 @@
 """
-IDS Routes - start/stop/status + alert actions
-Accessible to DEFENDER role.
-"""
 
 from flask import Blueprint, jsonify, request, session
 from functools import wraps
@@ -37,13 +34,7 @@ _discovery_cache = {
 }
 _DISCOVERY_TTL = 30
 
-
-# ============================================================================
-# MIDDLEWARE: Check Defender Role
-# ============================================================================
-
 def require_defender(f):
-    """Decorator to require defender role"""
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -56,12 +47,6 @@ def require_defender(f):
         return f(*args, **kwargs)
 
     return decorated_function
-
-
-# ============================================================================
-# IDS CONTROL ENDPOINTS
-# ============================================================================
-
 
 @ids_bp.route('/ids/start', methods=['POST'])
 @require_defender
@@ -100,7 +85,6 @@ def start_ids():
         logger.error(f"Failed to start IDS: {exc}")
         return jsonify({'error': str(exc)}), 500
 
-
 @ids_bp.route('/ids/stop', methods=['POST'])
 @require_defender
 def stop_ids():
@@ -113,7 +97,6 @@ def stop_ids():
     except Exception as exc:  # noqa: BLE001
         logger.error(f"Failed to stop IDS: {exc}")
         return jsonify({'error': str(exc)}), 500
-
 
 @ids_bp.route('/ids/status', methods=['GET'])
 @require_defender
@@ -137,11 +120,9 @@ def status_ids():
         logger.error(f"Failed to fetch IDS status: {exc}")
         return jsonify({'error': str(exc)}), 500
 
-
 @ids_bp.route('/ids/overview', methods=['GET'])
 @require_defender
 def ids_overview():
-    """Aggregate IDS status, alerts, stats, and a live node inventory."""
     try:
         logger.info("Fetching IDS overview (fast scan)...")
         nodes, network_range = _get_or_discover_nodes()
@@ -168,11 +149,9 @@ def ids_overview():
         logger.error(f"Failed to fetch overview: {exc}", exc_info=True)
         return jsonify({'error': str(exc)}), 500
 
-
 @ids_bp.route('/ids/discover', methods=['POST'])
 @require_defender
 def ids_discover_now():
-    """Force a fresh node discovery and return it."""
     try:
         _discovery_cache['ts'] = 0
         nodes, network_range = _get_or_discover_nodes(force=True)
@@ -180,12 +159,6 @@ def ids_discover_now():
     except Exception as exc:  # noqa: BLE001
         logger.error(f"Failed to discover nodes: {exc}")
         return jsonify({'error': str(exc)}), 500
-
-
-# ============================================================================
-# ALERT ACTIONS
-# ============================================================================
-
 
 @ids_bp.route('/ids/alerts/<alert_id>/ack', methods=['POST'])
 @require_defender
@@ -198,11 +171,9 @@ def ack_alert_route(alert_id):
         logger.error(f"Failed to acknowledge alert: {exc}")
         return jsonify({'error': str(exc)}), 500
 
-
 @ids_bp.route('/ids/block', methods=['POST'])
 @require_defender
 def block_entity():
-    """Block an IP using system firewall."""
     try:
         data = request.get_json(silent=True) or {}
         alert_id = data.get('alert_id')
@@ -213,7 +184,6 @@ def block_entity():
         if not target_ip:
             return jsonify({'error': 'target_ip required'}), 400
 
-        # Record the block request
         entity = {
             'alert_id': alert_id,
             'target_ip': target_ip,
@@ -223,7 +193,6 @@ def block_entity():
             'blocked': False,
         }
         
-        # Actually block the IP using firewall
         blocker = models.firewall_blocker
         if blocker:
             success = blocker.block_ip(target_ip, reason)
@@ -243,23 +212,15 @@ def block_entity():
         logger.error(f"Failed to block: {exc}")
         return jsonify({'error': str(exc)}), 500
 
-
-# ============================================================================
-# NODE DISCOVERY HELPERS
-# ============================================================================
-
-
 def _node_status(node, alerts):
     ip = node.get('ip') if isinstance(node, dict) else None
     if not ip:
         return 'danger'
 
-    # Whitelist: gateway and trusted servers are always safe
     whitelist = {'192.168.111.1', '192.168.111.2', '192.168.111.254', '192.168.111.12'}
     if ip in whitelist:
         return 'safe'
 
-    # Mark as danger if any alert references this IP
     for alert in alerts:
         details = alert.get('details', {}) if isinstance(alert, dict) else {}
         if ip in [details.get('dst_ip'), details.get('ip'), details.get('src_ip')]:
@@ -271,7 +232,6 @@ def _node_status(node, alerts):
 
     return 'safe'
 
-
 def _annotate_nodes(hosts, alerts):
     nodes = []
     for host in hosts:
@@ -280,10 +240,8 @@ def _annotate_nodes(hosts, alerts):
         nodes.append(data)
     return nodes
 
-
 def _get_or_discover_nodes(force: bool = False):
     now = time.time()
-    # Cache discovery results for 10 seconds to keep UI responsive
     if not force and (now - _discovery_cache['ts']) < 10 and _discovery_cache['nodes']:
         return _discovery_cache['nodes'], _discovery_cache['range']
 

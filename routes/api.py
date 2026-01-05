@@ -1,7 +1,4 @@
 """
-API Routes - Scanner, Sniffer, Network Info
-Flask Blueprint for utility endpoints
-"""
 
 from flask import Blueprint, request, jsonify, session
 from functools import wraps
@@ -21,13 +18,7 @@ from models import active_scanners, active_sniffers
 
 api_bp = Blueprint('api', __name__)
 
-
-# ============================================================================
-# MIDDLEWARE: Check User Role
-# ============================================================================
-
 def require_attacker(f):
-    """Decorator to require attacker role"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if session.get('user_role') != 'ATTACKER':
@@ -35,25 +26,17 @@ def require_attacker(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
-# ============================================================================
-# NETWORK SCANNER ENDPOINTS
-# ============================================================================
-
 @api_bp.route('/scan/start', methods=['POST'])
 @require_attacker
 def start_scan():
-    """Start network scanning"""
     try:
         data = request.get_json()
         interface = data.get('interface')
         network_range = data.get('network_range') or get_default_network_range(interface) or '192.168.189.0/24'
         
-        # Create scanner
         scanner = NetworkScanner(interface=interface)
         scan_id = str(uuid.uuid4())
         
-        # Start scan in background
         def run_scan():
             try:
                 hosts = scanner.identify_active_machines(network_range, False)
@@ -66,7 +49,6 @@ def start_scan():
         thread = threading.Thread(target=run_scan, daemon=True)
         thread.start()
         
-        # Store scan
         active_scanners[scan_id] = {
             'object': scanner,
             'network_range': network_range,
@@ -84,11 +66,9 @@ def start_scan():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
 @api_bp.route('/scan/results/<scan_id>', methods=['GET'])
 @require_attacker
 def get_scan_results(scan_id):
-    """Get scan results"""
     try:
         if scan_id not in active_scanners:
             return jsonify({'error': 'Scan not found'}), 404
@@ -104,11 +84,9 @@ def get_scan_results(scan_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
 @api_bp.route('/scan/stop', methods=['POST'])
 @require_attacker
 def stop_scan():
-    """Signal a running scan to stop"""
     try:
         data = request.get_json()
         scan_id = data.get('scan_id')
@@ -125,11 +103,9 @@ def stop_scan():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
 @api_bp.route('/scan/interfaces', methods=['GET'])
 @require_attacker
 def list_interfaces():
-    """List network interfaces with ip/cidr/gateway info."""
     try:
         return jsonify({
             'interfaces': list_interfaces_detailed(),
@@ -138,15 +114,9 @@ def list_interfaces():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-# ============================================================================
-# TRAFFIC SNIFFER ENDPOINTS
-# ============================================================================
-
 @api_bp.route('/sniff/start', methods=['POST'])
 @require_attacker
 def start_sniffer():
-    """Start traffic sniffing"""
     try:
         data = request.get_json()
         bpf_filter = data.get('filter')
@@ -155,7 +125,6 @@ def start_sniffer():
         timeout = data.get('timeout')
         timeout = float(timeout) if timeout else None
         
-        # Create sniffer and attach callback to keep packets in memory
         sniffer = TrafficSniffer(interface=interface)
         sniffer_id = str(uuid.uuid4())
         
@@ -175,7 +144,6 @@ def start_sniffer():
         thread = threading.Thread(target=run_sniff, daemon=True)
         thread.start()
         
-        # Store sniffer
         active_sniffers[sniffer_id] = {
             'object': sniffer,
             'filter': bpf_filter,
@@ -194,11 +162,9 @@ def start_sniffer():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
 @api_bp.route('/sniff/packets/<sniffer_id>', methods=['GET'])
 @require_attacker
 def get_packets(sniffer_id):
-    """Get captured packets"""
     try:
         if sniffer_id not in active_sniffers:
             return jsonify({'error': 'Sniffer not found'}), 404
@@ -217,11 +183,9 @@ def get_packets(sniffer_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
 @api_bp.route('/sniff/stop', methods=['POST'])
 @require_attacker
 def stop_sniffer():
-    """Stop traffic sniffer"""
     try:
         data = request.get_json()
         sniffer_id = data.get('sniffer_id')
@@ -242,14 +206,8 @@ def stop_sniffer():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-# ============================================================================
-# SYSTEM INFO ENDPOINT
-# ============================================================================
-
 @api_bp.route('/network/info', methods=['GET'])
 def get_network_info():
-    """Get system and network information"""
     try:
         cpu_usage = psutil.cpu_percent(interval=0.1)
         ram_usage = psutil.virtual_memory().percent

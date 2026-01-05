@@ -1,0 +1,65 @@
+@startuml
+
+title IDS Platform - Use Case Diagram
+
+actor Attacker
+actor Defender
+actor System
+
+Attacker -- (Login)
+Attacker -- (Logout)
+Attacker -- (Network Scan)
+Attacker -- (Get Interfaces)
+Attacker -- (Network Info)
+Attacker -- (ARP Spoof Start)
+Attacker -- (ARP Spoof Stop)
+Attacker -- (SYN Flood Start)
+Attacker -- (SYN Flood Stop)
+Attacker -- (Attack Stats)
+Attacker -- (Sniff Start)
+Attacker -- (Sniff Stop)
+Attacker -- (Get Packets)
+
+Defender -- (Login)
+Defender -- (Logout)
+Defender -- (Start IDS)
+Defender -- (Stop IDS)
+Defender -- (IDS Status)
+Defender -- (Discover Nodes)
+Defender -- (IDS Overview)
+Defender -- (View Alerts)
+Defender -- (Ack Alert)
+Defender -- (Block IP)
+Defender -- (View Blocked)
+
+System -- (Detect ARP)
+System -- (Detect SYN)
+System -- (Detect PortScan)
+System -- (ID Attacker)
+System -- (Generate Alert)
+System -- (Log Events)
+
+(Network Scan) ..> (ID Attacker) : triggers
+(ARP Spoof Start) ..> (Detect ARP) : triggers
+(SYN Flood Start) ..> (Detect SYN) : triggers
+(Network Scan) ..> (Detect PortScan) : triggers
+
+(Detect ARP) ..> (Generate Alert) : produces
+(Detect SYN) ..> (Generate Alert) : produces
+(Detect PortScan) ..> (Generate Alert) : produces
+(ID Attacker) ..> (Generate Alert) : enriches
+
+(Generate Alert) ..> (View Alerts) : feeds
+(View Alerts) ..> (Ack Alert) : enables
+(Ack Alert) ..> (Block IP) : triggers
+
+(Detect ARP) ..> (Log Events) : records
+(Detect SYN) ..> (Log Events) : records
+(Detect PortScan) ..> (Log Events) : records
+(Block IP) ..> (Log Events) : records
+
+(Start IDS) ..> (Discover Nodes) : initializes
+(Discover Nodes) ..> (IDS Overview) : provides data
+(IDS Status) ..> (IDS Overview) : reflects
+
+@enduml

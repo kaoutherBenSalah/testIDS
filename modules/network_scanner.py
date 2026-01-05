@@ -1,16 +1,4 @@
 """
-Network Scanner Module
-Scans network for active hosts, discovers IP/MAC addresses, and identifies open ports
-
-This module provides network reconnaissance capabilities for the attacker interface.
-Results are displayed in a live table in the web interface.
-
-Usage:
-    scanner = NetworkScanner(interface='eth0')
-    hosts = scanner.scan_subnet('192.168.189.0/24')
-    
-Author: Kaouther Ben Salah, Mohamed Firas Ben Hmida, Houssem Eddine Ben Chaabane
-"""
 
 import sys
 import subprocess
@@ -25,9 +13,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from utils.logger import get_logger
 from utils.network_utils import list_interfaces_detailed, get_default_network_range
 
-
 class Host:
-    """Represents a discovered network host"""
 
     def __init__(self, ip, mac='Unknown'):
         self.ip = ip
@@ -39,7 +25,6 @@ class Host:
         self.os_guess = 'Unknown'
 
     def to_dict(self):
-        """Convert host to dictionary for JSON response"""
         return {
             'ip': self.ip,
             'mac': self.mac,
@@ -50,26 +35,10 @@ class Host:
             'os_guess': self.os_guess
         }
 
-
 class NetworkScanner:
-    """
-    Network Scanner for host discovery and port scanning
-    
-    Features:
-    - ARP scan for local network discovery
-    - ICMP ping sweep
-    - TCP port scanning
-    - MAC address resolution
-    - Hostname resolution
     """
     
     def __init__(self, interface=None, timeout=1):
-        """
-        Initialize Network Scanner
-        
-        Args:
-            interface (str): Network interface to use (e.g., 'eth0', 'ens33')
-            timeout (int): Timeout for network requests in seconds
         """
         self.interface = interface
         self.timeout = timeout
@@ -80,25 +49,15 @@ class NetworkScanner:
     
     def scan_subnet(self, network_range):
         """
-        Scan a subnet for active hosts using ARP requests
-        
-        Args:
-            network_range (str): Network range in CIDR notation (e.g., '192.168.1.0/24')
-        
-        Returns:
-            list<Host>: List of discovered hosts
-        """
         self.logger.info(f"🔍 Scanning network: {network_range}")
         self.discovered_hosts = []
         self.stop_requested = False
         
         try:
-            # Create ARP request packet
             arp = ARP(pdst=network_range)
             ether = Ether(dst="ff:ff:ff:ff:ff:ff")  # Broadcast MAC
             packet = ether / arp
             
-            # Send packet and receive responses
             self.logger.info("Sending ARP requests...")
             result = srp(packet, timeout=self.timeout, verbose=False, iface=self.interface)[0]
             
@@ -106,7 +65,6 @@ class NetworkScanner:
                 self.logger.info("🛑 Scan aborted before processing responses")
                 return []
             
-            # Process responses
             for sent, received in result:
                 if self.stop_requested:
                     self.logger.info("🛑 Scan aborted during processing")
@@ -114,7 +72,6 @@ class NetworkScanner:
                 ip = received.psrc
                 mac = received.hwsrc
                 
-                # Skip broadcast/multicast addresses
                 try:
                     ip_obj = ipaddress.ip_address(ip)
                     if ip_obj.is_multicast or str(ip).endswith('.255'):
@@ -136,15 +93,6 @@ class NetworkScanner:
     
     def scan_ports(self, ip_address, ports=None):
         """
-        Scan specific ports on a target IP
-        
-        Args:
-            ip_address (str): Target IP address
-            ports (list): List of ports to scan. If None, scans common ports.
-        
-        Returns:
-            list<int>: List of open ports
-        """
         if ports is None:
             ports = self.default_ports
         
@@ -156,17 +104,14 @@ class NetworkScanner:
                 self.logger.info("🛑 Port scan aborted")
                 break
             try:
-                # Create TCP SYN packet
                 packet = IP(dst=ip_address) / TCP(dport=port, flags="S")
                 response = sr1(packet, timeout=0.5, verbose=False)
 
-                # Check if port is open (SYN-ACK response)
                 if response and response.haslayer(TCP):
                     if response[TCP].flags == 0x12:  # SYN-ACK
                         open_ports.append(port)
                         self.logger.info(f"  ✅ Port {port} is OPEN")
 
-                        # Send RST to close connection
                         rst = IP(dst=ip_address) / TCP(dport=port, flags="R")
                         sr1(rst, timeout=1, verbose=False)
             
@@ -177,20 +122,9 @@ class NetworkScanner:
         return open_ports
 
     def stop(self):
-        """Signal the scanner to stop after current operation."""
         self.stop_requested = True
     
     def identify_active_machines(self, network_range=None, full_scan=False):
-        """
-        Identify all active machines on network
-        Alias for scan_subnet with optional port scanning
-        
-        Args:
-            network_range (str): Network range in CIDR notation
-            full_scan (bool): When True, also perform port scan and OS guess
-        
-        Returns:
-            list<Host>: List of active hosts with detailed info
         """
         if not network_range:
             network_range = get_default_network_range(self.interface) or '192.168.1.0/24'
@@ -200,19 +134,16 @@ class NetworkScanner:
         if not full_scan:
             return hosts
         
-        # For each host, gather additional information
         for host in hosts:
             if self.stop_requested:
                 self.logger.info("🛑 Full scan aborted")
                 break
             self.logger.info(f"🔍 Gathering info for {host.ip}...")
             
-            # Hostname resolution (try multiple times for better results)
             self.logger.info(f"🔎 Resolving hostname for {host.ip}...")
             host.hostname = self._resolve_hostname(host.ip)
             if not host.hostname:
                 self.logger.info(f"⚠️  First attempt failed, retrying {host.ip}...")
-                # Retry with a small delay for DHCP/DNS propagation
                 import time
                 time.sleep(0.2)
                 host.hostname = self._resolve_hostname(host.ip)
@@ -222,26 +153,15 @@ class NetworkScanner:
             else:
                 self.logger.warning(f"❌ Could not resolve hostname for {host.ip}")
 
-            # Scan common ports
             host.open_ports = self.scan_ports(host.ip)
 
-            # Service/banner detection
             host.services = self._detect_services(host.ip, host.open_ports)
 
-            # Simple OS detection based on open ports
             host.os_guess = self._guess_os(host.open_ports)
         
         return hosts
     
     def ping_sweep(self, network_range):
-        """
-        Perform ICMP ping sweep to identify live hosts
-        
-        Args:
-            network_range (str): Network range in CIDR notation
-        
-        Returns:
-            list<str>: List of IP addresses that responded to ping
         """
         self.logger.info(f"🔍 Ping sweep: {network_range}")
         live_hosts = []
@@ -252,7 +172,6 @@ class NetworkScanner:
             for ip in network.hosts():
                 ip_str = str(ip)
                 
-                # Send ICMP echo request
                 packet = IP(dst=ip_str) / ICMP()
                 response = sr1(packet, timeout=1, verbose=False)
                 
@@ -268,14 +187,6 @@ class NetworkScanner:
             return []
     
     def get_mac_address(self, ip_address):
-        """
-        Get MAC address for a specific IP
-        
-        Args:
-            ip_address (str): Target IP address
-        
-        Returns:
-            str: MAC address or 'Unknown'
         """
         try:
             arp = ARP(pdst=ip_address)
@@ -293,9 +204,6 @@ class NetworkScanner:
             return 'Unknown'
     
     def display_scan_results(self):
-        """
-        Display scan results in a formatted table
-        (For command-line use)
         """
         if not self.discovered_hosts:
             self.logger.info("No hosts discovered yet.")
@@ -319,18 +227,9 @@ class NetworkScanner:
     
     def _guess_os(self, open_ports):
         """
-        Simple OS detection based on open ports
-        
-        Args:
-            open_ports (list): List of open ports
-        
-        Returns:
-            str: OS guess
-        """
         if not open_ports:
             return 'Unknown'
         
-        # Simple heuristics
         if 3389 in open_ports:  # RDP
             return 'Windows'
         elif 22 in open_ports and 80 in open_ports:
@@ -345,9 +244,7 @@ class NetworkScanner:
             return 'Unknown'
 
     def _resolve_hostname(self, ip_address: str) -> Optional[str]:
-        """Multi-method hostname resolution with comprehensive fallbacks."""
         
-        # Method 1: Check hosts file (Windows: C:\Windows\System32\drivers\etc\hosts, Linux: /etc/hosts)
         import platform
         hosts_file = r'C:\Windows\System32\drivers\etc\hosts' if platform.system() == 'Windows' else '/etc/hosts'
         try:
@@ -363,7 +260,6 @@ class NetworkScanner:
         except Exception as e:
             self.logger.debug(f"Hosts file lookup failed: {e}")
         
-        # Method 2: Reverse DNS (most reliable when configured)
         try:
             hostname, _, _ = socket.gethostbyaddr(ip_address)
             if hostname and hostname != ip_address:
@@ -373,7 +269,6 @@ class NetworkScanner:
         except Exception as e:
             self.logger.debug(f"Reverse DNS failed for {ip_address}: {e}")
         
-        # Method 3: NetBIOS lookup (Windows networks)
         try:
             result = subprocess.run(
                 ["nmblookup", "-A", ip_address], 
@@ -390,7 +285,6 @@ class NetworkScanner:
         except Exception as e:
             self.logger.debug(f"NetBIOS lookup failed: {e}")
         
-        # Method 4: nmap hostname detection (when nmap is available)
         try:
             result = subprocess.run(
                 ["nmap", "-sn", "-n", "--system-dns", ip_address],
@@ -409,7 +303,6 @@ class NetworkScanner:
         except Exception as e:
             self.logger.debug(f"nmap hostname lookup failed: {e}")
         
-        # Method 5: getent hosts (Linux)
         try:
             result = subprocess.run(
                 ["getent", "hosts", ip_address],
@@ -424,7 +317,6 @@ class NetworkScanner:
         except Exception as e:
             self.logger.debug(f"getent lookup failed: {e}")
         
-        # Method 6: ARP cache check with hostname (Linux)
         try:
             result = subprocess.run(
                 ["arp", "-a"], 
@@ -433,7 +325,6 @@ class NetworkScanner:
             if result.returncode == 0:
                 for line in result.stdout.splitlines():
                     if ip_address in line:
-                        # Format: hostname (192.168.1.100) at aa:bb:cc:dd:ee:ff [ether] on eth0
                         match = line.split('(')[0].strip()
                         if match and not match.startswith('?') and match != ip_address:
                             hostname = match.split('.')[0]
@@ -442,7 +333,6 @@ class NetworkScanner:
         except Exception as e:
             self.logger.debug(f"ARP cache lookup failed: {e}")
         
-        # Method 7: Try mDNS/Avahi (for .local domains)
         try:
             result = subprocess.run(
                 ["avahi-resolve", "-a", ip_address],
@@ -461,7 +351,6 @@ class NetworkScanner:
         return None
 
     def _detect_services(self, ip_address: str, ports: List[int]) -> List[Dict[str, str]]:
-        """Attempt to fingerprint services/banners on open ports."""
         services = []
         for port in ports:
             service_name = self._common_service_name(port)
@@ -474,7 +363,6 @@ class NetworkScanner:
         return services
 
     def _grab_banner(self, ip_address: str, port: int, service_hint: Optional[str]) -> Optional[str]:
-        """Lightweight banner grabbing with short timeouts."""
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(0.7)
@@ -495,11 +383,9 @@ class NetworkScanner:
             sock.close()
             if not data:
                 return None
-            # Clean and limit banner text
             banner = data.decode(errors='ignore').strip().replace('\r', '').replace('\n', ' ')
             return banner[:300] if len(banner) > 300 else banner
         except Exception:
-            # Try minimal TLS client hello for 443 to extract SNI/cert CN
             if port == 443:
                 try:
                     context = ssl.create_default_context()
@@ -522,13 +408,7 @@ class NetworkScanner:
         }
         return mapping.get(port)
 
-
-# ============================================================================
-# COMMAND-LINE INTERFACE
-# ============================================================================
-
 def main():
-    """Command-line interface for network scanner"""
     import argparse
     
     parser = argparse.ArgumentParser(description='Network Scanner')
@@ -551,7 +431,6 @@ def main():
                 host.open_ports = scanner.scan_ports(host.ip)
     
     scanner.display_scan_results()
-
 
 if __name__ == '__main__':
     main()

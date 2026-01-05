@@ -1,8 +1,3 @@
-"""
-Attack Routes - ARP Spoofing, SYN Flooding
-Flask Blueprint for attack endpoints
-"""
-
 from flask import Blueprint, request, jsonify, session
 from functools import wraps
 import threading
@@ -19,13 +14,7 @@ from models import active_attacks, log_attack
 
 attacks_bp = Blueprint('attacks', __name__)
 
-
-# ============================================================================
-# MIDDLEWARE: Check User Role
-# ============================================================================
-
 def require_attacker(f):
-    """Decorator to require attacker role"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if session.get('user_role') != 'ATTACKER':
@@ -33,15 +22,9 @@ def require_attacker(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
-# ============================================================================
-# ARP SPOOFING ENDPOINTS
-# ============================================================================
-
 @attacks_bp.route('/arp/start', methods=['POST'])
 @require_attacker
 def start_arp_attack():
-    """Start ARP spoofing attack"""
     try:
         data = request.get_json()
         victim_ip = data.get('target_ip')
@@ -49,24 +32,18 @@ def start_arp_attack():
         interface = data.get('interface') or 'eth0'
         interval = data.get('interval', 2)
         
-        # Validate
         if not victim_ip or not gateway_ip:
             return jsonify({'error': 'Missing parameters: target_ip, gateway_ip'}), 400
         
-        # Create unique attack ID
         attack_id = f"arp_{victim_ip}_{gateway_ip}"
         
-        # Check if already running
         if attack_id in active_attacks:
             return jsonify({'error': 'Attack already running'}), 400
         
-        # Create ARP spoofer
         spoofer = ARPSpoofer(victim_ip, gateway_ip, interface)
         
-        # Start in background thread
         def run_attack():
             try:
-                # Use ARPSpoofer.start_attack (per module API) instead of non-existent start
                 spoofer.start_attack(interval=interval)
             except Exception as e:
                 print(f"ARP Attack Error: {e}")
@@ -74,7 +51,6 @@ def start_arp_attack():
         thread = threading.Thread(target=run_attack, daemon=True)
         thread.start()
         
-        # Store in memory
         active_attacks[attack_id] = {
             'object': spoofer,
             'type': 'ARP',
@@ -84,7 +60,6 @@ def start_arp_attack():
             'status': 'running'
         }
         
-        # Log attack
         log_attack('ARP_SPOOFING', victim_ip, gateway_ip, 'running')
         
         return jsonify({
@@ -96,11 +71,9 @@ def start_arp_attack():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
 @attacks_bp.route('/arp/stop', methods=['POST'])
 @require_attacker
 def stop_arp_attack():
-    """Stop ARP spoofing attack"""
     try:
         data = request.get_json()
         attack_id = data.get('attack_id')
@@ -111,14 +84,10 @@ def stop_arp_attack():
         attack_info = active_attacks[attack_id]
         spoofer = attack_info['object']
         
-        # Stop attack
-        # Use ARPSpoofer.stop_attack to restore ARP tables properly
         spoofer.stop_attack()
         
-        # Remove from active attacks
         del active_attacks[attack_id]
         
-        # Log
         log_attack('ARP_SPOOFING', attack_info['target_ip'], attack_info['gateway_ip'], 'stopped')
         
         return jsonify({
@@ -129,15 +98,9 @@ def stop_arp_attack():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-# ============================================================================
-# SYN FLOODING ENDPOINTS
-# ============================================================================
-
 @attacks_bp.route('/syn/start', methods=['POST'])
 @require_attacker
 def start_syn_attack():
-    """Start SYN flooding attack"""
     try:
         data = request.get_json()
         target_ips = data.get('target_ips') or []
@@ -154,18 +117,14 @@ def start_syn_attack():
         spoof_pool = data.get('spoof_ips') or []
         random_spoof_count = int(data.get('random_spoof_count') or 0)
         
-        # Validate
         if not target_ips:
             return jsonify({'error': 'Missing parameter: target_ip or target_ips'}), 400
         
-        # Create unique attack ID
         attack_id = f"syn_{target_ips[0]}_{target_ports[0]}"
         
-        # Check if already running
         if attack_id in active_attacks:
             return jsonify({'error': 'Attack already running'}), 400
         
-        # Create SYN flooder
         flooder = SYNFlooder(
             target_ips,
             target_ports,
@@ -175,7 +134,6 @@ def start_syn_attack():
             spoof_pool_size=random_spoof_count,
         )
         
-        # Start in background thread
         def run_attack():
             try:
                 flooder.start()
@@ -185,7 +143,6 @@ def start_syn_attack():
         thread = threading.Thread(target=run_attack, daemon=True)
         thread.start()
         
-        # Store in memory
         active_attacks[attack_id] = {
             'object': flooder,
             'type': 'SYN',
@@ -195,7 +152,6 @@ def start_syn_attack():
             'status': 'running'
         }
         
-        # Log attack
         log_attack('SYN_FLOODING', ','.join(target_ips), None, 'running')
         
         return jsonify({
@@ -207,11 +163,9 @@ def start_syn_attack():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
 @attacks_bp.route('/syn/stop', methods=['POST'])
 @require_attacker
 def stop_syn_attack():
-    """Stop SYN flooding attack"""
     try:
         data = request.get_json()
         attack_id = data.get('attack_id')
@@ -222,13 +176,10 @@ def stop_syn_attack():
         attack_info = active_attacks[attack_id]
         flooder = attack_info['object']
         
-        # Stop attack
         flooder.stop()
         
-        # Remove from active attacks
         del active_attacks[attack_id]
         
-        # Log
         log_attack('SYN_FLOODING', attack_info['target_ip'], None, 'stopped')
         
         return jsonify({
@@ -239,15 +190,9 @@ def stop_syn_attack():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-# ============================================================================
-# ATTACK STATISTICS
-# ============================================================================
-
 @attacks_bp.route('/stats', methods=['GET'])
 @require_attacker
 def get_attack_stats():
-    """Get statistics on running attacks"""
     try:
         attacks = {}
         
@@ -255,10 +200,8 @@ def get_attack_stats():
             target_ip = attack_info.get('target_ip') or attack_info.get('victim_ip') or attack_info.get('attacker_ip')
             is_blocked = target_ip in models.blocked_ips
             
-            # Get packet count
             packets = attack_info.get('packets_sent', 0)
             
-            # Attack is successful if running and not blocked
             success = attack_info['status'] == 'running' and not is_blocked
             
             attack_stat = {

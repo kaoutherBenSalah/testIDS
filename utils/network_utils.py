@@ -1,7 +1,4 @@
 """
-Utilitaires réseau pour la plateforme de cybersécurité
-Fonctions communes pour la manipulation réseau
-"""
 
 import socket
 import struct
@@ -13,19 +10,9 @@ import subprocess
 from typing import List, Dict, Optional
 from scapy.all import *
 
-
 def get_mac(ip):
     """
-    Récupère l'adresse MAC associée à une IP via ARP
-    
-    Args:
-        ip (str): Adresse IP cible
-    
-    Returns:
-        str: Adresse MAC ou None si non trouvée
-    """
     try:
-        # Envoyer une requête ARP
         arp_request = ARP(pdst=ip)
         broadcast = Ether(dst="ff:ff:ff:ff:ff:ff")
         arp_request_broadcast = broadcast / arp_request
@@ -39,25 +26,14 @@ def get_mac(ip):
         print(f"❌ Erreur lors de la récupération de la MAC: {e}")
         return None
 
-
 def get_local_ip(interface=None):
-    """
-    Récupère l'adresse IP locale
-    
-    Args:
-        interface (str): Interface réseau (optionnel)
-    
-    Returns:
-        str: Adresse IP locale
     """
     try:
         if interface:
-            # Utiliser l'interface spécifiée
             import netifaces
             addrs = netifaces.ifaddresses(interface)
             return addrs[netifaces.AF_INET][0]['addr']
         else:
-            # Méthode par socket
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.connect(("8.8.8.8", 80))
             ip = s.getsockname()[0]
@@ -67,13 +43,7 @@ def get_local_ip(interface=None):
         print(f"❌ Erreur lors de la récupération de l'IP locale: {e}")
         return "127.0.0.1"
 
-
 def get_gateway_ip():
-    """
-    Récupère l'adresse IP de la passerelle par défaut
-    
-    Returns:
-        str: Adresse IP de la passerelle
     """
     try:
         with open("/proc/net/route") as f:
@@ -83,7 +53,6 @@ def get_gateway_ip():
                     gateway = socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
                     return gateway
     except Exception:
-        # Alternative pour Windows ou autres systèmes
         import platform
         if platform.system() == "Windows":
             import subprocess
@@ -94,41 +63,17 @@ def get_gateway_ip():
     
     return None
 
-
 def is_valid_ip(ip):
-    """
-    Vérifie si une adresse IP est valide
-    
-    Args:
-        ip (str): Adresse IP à vérifier
-    
-    Returns:
-        bool: True si valide, False sinon
     """
     pattern = re.compile(r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
     return pattern.match(ip) is not None
 
-
 def is_valid_mac(mac):
-    """
-    Vérifie si une adresse MAC est valide
-    
-    Args:
-        mac (str): Adresse MAC à vérifier
-    
-    Returns:
-        bool: True si valide, False sinon
     """
     pattern = re.compile(r"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$")
     return pattern.match(mac) is not None
 
-
 def get_network_interfaces():
-    """
-    Liste les interfaces réseau disponibles
-    
-    Returns:
-        list: Liste des interfaces
     """
     try:
         from scapy.all import get_if_list
@@ -137,9 +82,7 @@ def get_network_interfaces():
         print(f"❌ Erreur lors de la récupération des interfaces: {e}")
         return []
 
-
 def _parse_nmcli_device_status() -> List[Dict[str, str]]:
-    """Parse nmcli output to build interface inventory."""
     interfaces = []
     try:
         result = subprocess.run(
@@ -161,27 +104,21 @@ def _parse_nmcli_device_status() -> List[Dict[str, str]]:
         return []
     return interfaces
 
-
 def _parse_ip_link_show() -> List[str]:
-    """Fallback to ip link show to list interface names."""
     names = []
     try:
         result = subprocess.run(["ip", "-o", "link", "show"], capture_output=True, text=True, check=False)
         for line in result.stdout.strip().splitlines():
-            # format: 2: ens33: <...>
             segments = line.split(":")
             if len(segments) >= 2:
                 name = segments[1].strip()
-                # skip lo
                 if name:
                     names.append(name)
     except Exception:
         return []
     return names
 
-
 def _get_interface_addrs(ifname: str) -> Dict[str, Optional[str]]:
-    """Return ipv4 address and netmask for interface if available."""
     try:
         result = subprocess.run(["ip", "-j", "addr", "show", ifname], capture_output=True, text=True, check=False)
         data = json.loads(result.stdout or "[]")
@@ -197,9 +134,7 @@ def _get_interface_addrs(ifname: str) -> Dict[str, Optional[str]]:
         pass
     return {"ip": None, "cidr": None, "gateway": None}
 
-
 def _get_default_gateway_for_interface(ifname: str) -> Optional[str]:
-    """Read default gateway for a given interface (Linux)."""
     try:
         with open("/proc/net/route") as f:
             for line in f:
@@ -210,11 +145,7 @@ def _get_default_gateway_for_interface(ifname: str) -> Optional[str]:
         return None
     return None
 
-
 def list_interfaces_detailed() -> List[Dict[str, Optional[str]]]:
-    """Return detailed interfaces info with ip/cidr/gateway.
-
-    Priority: nmcli for inventory, ip addr for addresses.
     """
     detailed = []
     base = _parse_nmcli_device_status()
@@ -239,9 +170,7 @@ def list_interfaces_detailed() -> List[Dict[str, Optional[str]]]:
         })
     return detailed
 
-
 def get_dhcp_scope() -> Optional[str]:
-    """Try to read DHCP lease files to infer scope (subnet/netmask)."""
     lease_paths = [
         "/var/lib/NetworkManager/internal-leases",
         "/var/lib/NetworkManager/dhclient-*.lease",
@@ -269,35 +198,27 @@ def get_dhcp_scope() -> Optional[str]:
                 continue
     return None
 
-
 def infer_cidr_from_ip(ip: str, netmask: str) -> Optional[str]:
-    """Build CIDR string from ip and netmask."""
     try:
         network = ipaddress.IPv4Network(f"{ip}/{netmask}", strict=False)
         return str(network)
     except Exception:
         return None
 
-
 def get_default_network_range(interface: Optional[str] = None) -> Optional[str]:
-    """Return a best-effort local network CIDR using interface info or DHCP scope."""
-    # Try DHCP lease hint first
     dhcp_scope = get_dhcp_scope()
     if dhcp_scope:
         return dhcp_scope
 
-    # Try interface-specific info
     detailed = list_interfaces_detailed()
     chosen = None
     if interface:
         chosen = next((i for i in detailed if i.get("name") == interface), None)
     if not chosen and detailed:
-        # pick first interface with IP
         chosen = next((i for i in detailed if i.get("ip")), detailed[0])
     if chosen and chosen.get("cidr"):
         return chosen.get("cidr")
 
-    # Fallback to local ip /24
     ip = get_local_ip(interface)
     try:
         network = ipaddress.IPv4Network(f"{ip}/24", strict=False)
@@ -305,13 +226,7 @@ def get_default_network_range(interface: Optional[str] = None) -> Optional[str]:
     except Exception:
         return None
 
-
 def enable_ip_forwarding():
-    """
-    Active le forwarding IP (nécessaire pour MITM)
-    
-    Returns:
-        bool: True si succès, False sinon
     """
     try:
         import platform
@@ -328,13 +243,7 @@ def enable_ip_forwarding():
         print(f"❌ Erreur lors de l'activation du forwarding: {e}")
         return False
 
-
 def disable_ip_forwarding():
-    """
-    Désactive le forwarding IP
-    
-    Returns:
-        bool: True si succès, False sinon
     """
     try:
         import platform
@@ -351,26 +260,15 @@ def disable_ip_forwarding():
         print(f"❌ Erreur lors de la désactivation du forwarding: {e}")
         return False
 
-
 def scan_network(network_range="192.168.1.0/24"):
-    """
-    Scanne un réseau pour trouver les hôtes actifs
-    
-    Args:
-        network_range (str): Plage réseau au format CIDR
-    
-    Returns:
-        list: Liste des hôtes actifs (IP, MAC)
     """
     print(f"🔍 Scan du réseau {network_range}...")
     
     try:
-        # Créer une requête ARP pour la plage
         arp_request = ARP(pdst=network_range)
         broadcast = Ether(dst="ff:ff:ff:ff:ff:ff")
         arp_request_broadcast = broadcast / arp_request
         
-        # Envoyer et recevoir les réponses
         answered_list = srp(arp_request_broadcast, timeout=3, verbose=False)[0]
         
         hosts = []
@@ -388,38 +286,25 @@ def scan_network(network_range="192.168.1.0/24"):
         print(f"❌ Erreur lors du scan: {e}")
         return []
 
-
 def get_packet_info(packet):
-    """
-    Extrait les informations importantes d'un paquet
-    
-    Args:
-        packet: Paquet Scapy
-    
-    Returns:
-        dict: Informations du paquet
     """
     info = {}
     
     try:
-        # Couche Ethernet
         if packet.haslayer(Ether):
             info['src_mac'] = packet[Ether].src
             info['dst_mac'] = packet[Ether].dst
         
-        # Couche IP
         if packet.haslayer(IP):
             info['src_ip'] = packet[IP].src
             info['dst_ip'] = packet[IP].dst
             info['protocol'] = packet[IP].proto
         
-        # Couche TCP
         if packet.haslayer(TCP):
             info['src_port'] = packet[TCP].sport
             info['dst_port'] = packet[TCP].dport
             info['tcp_flags'] = packet[TCP].flags
         
-        # Couche ARP
         if packet.haslayer(ARP):
             info['arp_op'] = packet[ARP].op
             info['arp_psrc'] = packet[ARP].psrc
@@ -431,9 +316,7 @@ def get_packet_info(packet):
     except Exception as e:
         return {'error': str(e)}
 
-
 if __name__ == "__main__":
-    # Tests des fonctions
     print("=== Test des utilitaires réseau ===\n")
     
     print(f"IP locale: {get_local_ip()}")

@@ -1,10 +1,4 @@
 """
-Intrusion Detection Monitor
-- Periodic ARP anomaly scan (detects duplicated MAC -> IP mappings)
-- Live TCP SYN rate monitor (basic SYN flood heuristic)
-
-Designed to be light-weight and extensible for future detectors.
-"""
 
 import threading
 import time
@@ -19,9 +13,7 @@ from utils.network_utils import get_default_network_range
 
 Alert = Dict[str, object]
 
-
 class IDSMonitor:
-    """Background IDS monitor combining ARP anomaly checks and SYN-rate detection."""
 
     def __init__(
         self,
@@ -41,7 +33,6 @@ class IDSMonitor:
         self.syn_unique_sources = max(5, syn_unique_sources)
         self.alert_sink = alert_sink
 
-        # Whitelist: trusted IPs (gateway, legitimate servers)
         self.whitelist = {
             '192.168.111.1',      # Gateway
             '192.168.111.2', 
@@ -74,9 +65,6 @@ class IDSMonitor:
             "port_scans": 0,
         }
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
     def start(self):
         if self.running.is_set():
             return
@@ -124,11 +112,7 @@ class IDSMonitor:
                 return True
         return False
 
-    # ------------------------------------------------------------------
-    # Internal loops (PASSIVE SNIFFING ONLY - NO NETWORK SCANNING)
-    # ------------------------------------------------------------------
     def _syn_sniff_loop(self):
-        # Use short sniffs with timeout so we can react to stop events
         while self.running.is_set():
             try:
                 sniff(
@@ -143,7 +127,6 @@ class IDSMonitor:
                 time.sleep(2)
 
     def _arp_spoof_sniff_loop(self):
-        """Detect ARP spoofing by monitoring for gratuitous/unsolicited ARP replies."""
         arp_seen = {}  # Track {(src_ip, mac): timestamp}
         while self.running.is_set():
             try:
@@ -158,33 +141,20 @@ class IDSMonitor:
                 self.logger.error(f"ARP spoof sniff failed: {exc}")
                 time.sleep(2)
 
-    # ------------------------------------------------------------------
-    # Detection logic (PASSIVE - no network scanning)
-    # ------------------------------------------------------------------
     def _detect_local_attacker(self, spoofed_sources: set, dst_ip: str) -> Optional[str]:
-        """
-        Detect which local machine is generating spoofed packets.
-        Strategy: Check the ARP table and port scanner history to find which
-        local IP has been active and is most likely the attacker.
         """
         try:
             import ipaddress
             network = ipaddress.ip_network(self.network_range, strict=False)
             
-            # Get all local IPs that have been seen in port scan history
-            # (port scanners typically probe before launching attacks)
             local_suspects = {ip for ip in self.port_scan_tracker.keys() 
                             if ipaddress.ip_address(ip) in network}
             
-            # If we found local IPs that were actively scanning, one of them is likely the attacker
             if local_suspects:
-                # Return the one with most port scan activity
                 suspect = max(local_suspects, 
                             key=lambda ip: len(self.port_scan_tracker.get(ip, [])))
                 return suspect
             
-            # Fallback: Check if any known local IPs sent unusual traffic
-            # Look for IPs in the 192.168.111.x range that we've seen
             for src_ip in self.arp_table.keys():
                 try:
                     if ipaddress.ip_address(src_ip) in network:
@@ -197,7 +167,6 @@ class IDSMonitor:
         return None
 
     def _handle_tcp_packet(self, packet):
-        """Handle TCP packets for both SYN flood and port scan detection."""
         if not packet.haslayer(IP) or not packet.haslayer(TCP):
             return
 
@@ -208,11 +177,9 @@ class IDSMonitor:
         dst_port = tcp_layer.dport
         ts = time.time()
 
-        # Skip whitelisted sources
         if src_ip in self.whitelist:
             return
 
-        # 1. SYN flood detection
         if tcp_layer.flags & 0x02:  # SYN flag
             history = self.syn_history[dst_ip]
             history.append((ts, src_ip))
@@ -231,13 +198,10 @@ class IDSMonitor:
             ):
                 self.stats["syn_events"] += 1  # Increment ONLY when alert is raised
                 
-                # Collect all source IPs from this attack window
                 all_sources = {s for _, s in filtered}
                 
-                # Detect the local machine that's generating these spoofed packets
                 local_attacker = self._detect_local_attacker(all_sources, dst_ip)
                 
-                # Find the most frequent source IP for reference
                 source_counts = {}
                 for _, src in filtered:
                     source_counts[src] = source_counts.get(src, 0) + 1
@@ -259,7 +223,6 @@ class IDSMonitor:
                 self._raise_alert("SYN_FLOOD_DETECTED", summary, "critical", details)
                 self.alert_cooldowns[dst_ip] = ts + self.syn_window_sec
 
-        # 2. Port scan detection (track ports hit by each source)
         scan_history = self.port_scan_tracker[src_ip]
         scan_history.append((ts, dst_port))
         window_start = ts - 10  # 10-second window
@@ -268,14 +231,12 @@ class IDSMonitor:
 
         unique_ports = len({p for _, p in filtered_scans})
         
-        # If source hits 10+ unique ports in 10 seconds, it's a port scan
         if unique_ports >= 10:
             cooldown_key = f"port_scan_{src_ip}"
             cooldown_until = self.alert_cooldowns.get(cooldown_key, 0)
             if ts >= cooldown_until:
                 self.stats["port_scans"] += 1
                 summary = f"PORT SCAN DETECTED: {src_ip} scanned {unique_ports} ports in 10s"
-                # Only include top 10 ports in alert, not all ports (keeps alert compact)
                 all_ports = sorted(list(set(p for _, p in filtered_scans)))
                 top_ports = all_ports[:10]
                 details = {
@@ -289,7 +250,6 @@ class IDSMonitor:
                 self.alert_cooldowns[cooldown_key] = ts + 60
 
     def _handle_arp_packet(self, packet, arp_seen):
-        """Detect ARP spoofing by tracking MAC changes for each IP."""
         if not packet.haslayer(ARP):
             return
         
@@ -302,19 +262,15 @@ class IDSMonitor:
         src_ip = arp_layer.psrc
         src_mac = arp_layer.hwsrc
         
-        # Skip whitelisted IPs (gateway, trusted servers)
         if src_ip in self.whitelist:
             return
         
-        # Learn the baseline: first time seeing this IP, record its MAC
         if src_ip not in self.arp_table:
             self.arp_table[src_ip] = src_mac
             return
         
-        # Check if MAC changed for this IP (ARP spoofing!)
         expected_mac = self.arp_table[src_ip]
         if src_mac != expected_mac:
-            # MAC changed! This is ARP spoofing
             ts = time.time()
             cooldown_key = f"arp_spoof_{src_ip}"
             cooldown_until = self.alert_cooldowns.get(cooldown_key, 0)
@@ -330,9 +286,6 @@ class IDSMonitor:
                 self.alert_cooldowns[cooldown_key] = ts + 60
                 self.logger.warning(f"ARP SPOOF: {src_ip} MAC changed {expected_mac} -> {src_mac}")
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
     def _raise_alert(self, alert_type: str, summary: str, severity: str, details: Dict[str, object]):
         alert: Alert = {
             "id": f"{alert_type}-{int(time.time() * 1000)}",
@@ -354,6 +307,5 @@ class IDSMonitor:
                 self.alert_sink(alert)
             except Exception as exc:  # noqa: BLE001
                 self.logger.error(f"Alert sink failed: {exc}")
-
 
 __all__ = ["IDSMonitor", "Alert"]

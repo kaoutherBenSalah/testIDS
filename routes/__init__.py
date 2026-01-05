@@ -1,6 +1,4 @@
 """
-__init__ for routes package
-"""
 
 from .attacks import attacks_bp
 from .api import api_bp

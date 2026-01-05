@@ -1,0 +1,233 @@
+@startuml IDS_Class_Diagram
+
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #0066cc
+skinparam classTextColor #000000
+skinparam arrowColor #0066cc
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName Arial
+
+title IDS Platform - Class Diagram
+
+' ============================================================================
+' DATA MODELS
+' ============================================================================
+package Models {
+    class User {
+        + username: str
+        + password_hash: str
+        + role: str
+        + created_at: datetime
+        --
+        + verify_password(pwd: str): bool
+        + get_role(): str
+    }
+    
+    class AttackRecord {
+        + attack_id: str
+        + attack_type: str
+        + target_ip: str
+        + source_ip: str
+        + timestamp: datetime
+        + status: str
+        --
+        + log_event(msg: str): void
+        + get_stats(): dict
+    }
+    
+    class IDSAlert {
+        + alert_id: str
+        + alert_type: str
+        + severity: str
+        + src_ip: str
+        + dst_ip: str
+        + attacker_ip: str
+        + details: dict
+        + timestamp: datetime
+        + acknowledged: bool
+        --
+        + ack(): void
+        + block_source(): void
+        + to_dict(): dict
+    }
+    
+    class NetworkNode {
+        + ip: str
+        + mac: str
+        + hostname: str
+        + ports: list
+        + is_blocked: bool
+        + last_seen: datetime
+        --
+        + is_active(): bool
+        + get_open_ports(): list
+        + mark_blocked(): void
+    }
+}
+
+' ============================================================================
+' ATTACK MODULES
+' ============================================================================
+package AttackModules {
+    class ARPSpoofer {
+        + interface: str
+        + target_ip: str
+        + gateway_ip: str
+        + interval: float
+        --
+        + start_spoof(): void
+        + stop_spoof(): void
+        + get_stats(): dict
+    }
+    
+    class SYNFlooder {
+        + interface: str
+        + target_ip: str
+        + target_port: int
+        + num_threads: int
+        --
+        + start_flood(): void
+        + stop_flood(): void
+        + get_packet_count(): int
+    }
+    
+    class NetworkScanner {
+        + interface: str
+        + timeout: float
+        --
+        + scan_subnet(range: str): list
+        + identify_active_machines(range: str): list
+        + scan_ports(ip: str): dict
+        + stop_scan(): void
+    }
+    
+    class TrafficSniffer {
+        + interface: str
+        + filter_string: str
+        --
+        + start_sniffing(filter: str): void
+        + stop_sniffing(): void
+        + get_packets(limit: int): list
+    }
+}
+
+' ============================================================================
+' DEFENSE MODULES
+' ============================================================================
+package DefenseModules {
+    class IDSMonitor {
+        + interface: str
+        + network_range: str
+        --
+        + start(): void
+        + stop(): void
+        + detect_arp_spoof(pkt): bool
+        + detect_syn_flood(pkt): bool
+        + detect_port_scan(pkt): bool
+        + get_stats(): dict
+        + get_alerts(): list
+        + ack_alert(alert_id): void
+    }
+    
+    class FirewallBlocker {
+        + os_type: str
+        --
+        + block_ip(ip: str): bool
+        + unblock_ip(ip: str): bool
+        + get_blocked_ips(): list
+    }
+}
+
+' ============================================================================
+' UTILITIES
+' ============================================================================
+package Utilities {
+    class Logger {
+        + name: str
+        --
+        + info(msg: str): void
+        + warning(msg: str): void
+        + error(msg: str): void
+        + debug(msg: str): void
+    }
+    
+    class NetworkUtils {
+        --
+        + {static} get_local_ip(): str
+        + {static} get_gateway_ip(): str
+        + {static} get_default_interface(): str
+        + {static} ip_in_range(ip: str): bool
+    }
+}
+
+' ============================================================================
+' FLASK APPLICATION
+' ============================================================================
+package FlaskApp {
+    class IDS_App {
+        + app: Flask
+        + secret_key: str
+        --
+        + initialize(): void
+        + register_blueprints(): void
+        + run(host: str, port: int): void
+    }
+    
+    class AttackRoutes {
+        --
+        + start_arp_attack(): Response
+        + stop_arp_attack(): Response
+        + start_syn_attack(): Response
+        + stop_syn_attack(): Response
+    }
+    
+    class IDSRoutes {
+        --
+        + start_ids(): Response
+        + stop_ids(): Response
+        + discover_nodes(): Response
+        + view_alerts(): Response
+        + block_ip(ip: str): Response
+    }
+    
+    class APIRoutes {
+        --
+        + start_scan(): Response
+        + start_sniffer(): Response
+        + get_network_info(): Response
+    }
+}
+
+' ============================================================================
+' RELATIONSHIPS
+' ============================================================================
+
+User "1" --> "many" AttackRecord : creates
+User "1" --> "many" IDSAlert : views
+
+ARPSpoofer --> AttackRecord : logs to
+SYNFlooder --> AttackRecord : logs to
+NetworkScanner --> NetworkNode : discovers
+
+IDSMonitor --> IDSAlert : generates
+IDSMonitor --> NetworkNode : tracks
+IDSMonitor --> FirewallBlocker : uses
+
+FirewallBlocker --> NetworkNode : blocks
+TrafficSniffer --> IDSAlert : analyzes
+
+IDS_App --> AttackRoutes : includes
+IDS_App --> IDSRoutes : includes
+IDS_App --> APIRoutes : includes
+
+AttackRoutes --> ARPSpoofer : controls
+AttackRoutes --> SYNFlooder : controls
+APIRoutes --> NetworkScanner : uses
+APIRoutes --> TrafficSniffer : controls
+IDSRoutes --> IDSMonitor : controls
+IDSRoutes --> FirewallBlocker : uses
+
+ARPSpoofer ..> NetworkUtils : uses
+IDSMonitor ..> Logger : uses
+
+@enduml
