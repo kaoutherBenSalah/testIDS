@@ -11,9 +11,7 @@
 
     <div class="tabs">
         <div class="tab active" onclick="switchTab('attacks', this)">🎯 Attacks</div>
-        <div class="tab" onclick="switchTab('scanner', this)">🔍 Scanner</div>
         <div class="tab" onclick="switchTab('sniffer', this)">📦 Sniffer</div>
-        <div class="tab" onclick="switchTab('info', this)">ℹ️ Info</div>
     </div>
 
     <div id="attacks-tab" class="tab-content active">
@@ -29,10 +27,6 @@
                 <div class="form-group">
                     <label>Range (CIDR)</label>
                     <input type="text" id="scan-range" placeholder="auto" />
-                </div>
-                <div class="form-group">
-                    <label>Full scan (hostnames + services)</label>
-                    <input type="checkbox" id="full-scan" checked />
                 </div>
             </div>
             <div class="button-row">
@@ -110,13 +104,6 @@
         </div>
     </div>
 
-    <div id="scanner-tab" class="tab-content">
-        <h2>🔍 Network Scanner (Detailed View)</h2>
-        <div class="card">
-            <p>Full results with extended information - same controls as in Attacks tab.</p>
-        </div>
-    </div>
-
     <div id="sniffer-tab" class="tab-content">
         <h2>📦 Traffic Sniffer</h2>
         <div class="card">
@@ -150,27 +137,12 @@
                     <label>Timeout (seconds)</label>
                     <input type="number" id="sniffer-timeout" value="0" min="0" />
                 </div>
-                <div class="form-group">
-                    <label>Promiscuous</label>
-                    <input type="checkbox" id="sniffer-promisc" />
-                </div>
-                <div class="form-group">
-                    <label>Save PCAP</label>
-                    <input type="checkbox" id="sniffer-pcap" />
-                </div>
             </div>
             <div class="button-row">
                 <button class="btn" onclick="startSniffer()">Start Sniffer</button>
                 <button class="btn btn-danger" id="sniffer-stop-btn" onclick="stopSniffer()" disabled>Stop Sniffer</button>
             </div>
             <div id="packet-list" style="background: #0a0e27; color: #00ff41; font-family: 'Courier New', monospace; padding: 1rem; border-radius: 4px; max-height: 500px; overflow-y: auto; font-size: 0.85rem; line-height: 1.4;"></div>
-        </div>
-    </div>
-
-    <div id="info-tab" class="tab-content">
-        <h2>ℹ️ Notes</h2>
-        <div class="card">
-            <p>Scanning resolves hostnames, shows open ports and banners when available. Scan results feed ARP and SYN target selectors. SYN flood supports multiple targets/ports and optional spoofing with rate limiting. Sniffer presets quickly filter common traffic.</p>
         </div>
     </div>
 </div>
@@ -428,7 +400,6 @@
         const iface = document.getElementById('scan-interface').value;
         const rangeField = document.getElementById('scan-range');
         let range = rangeField.value || defaultRange || '';
-        const fullScan = document.getElementById('full-scan').checked;
 
         if (!range) {
             const chosen = interfacesCache.find(i => i.name === iface);
@@ -446,7 +417,7 @@
         try {
             document.getElementById('scan-results').innerHTML = `<div style="color: #0ff; padding: 1rem; text-align: center;">
                 <div style="font-size: 1.2rem; margin-bottom: 0.5rem;">🔍 SCANNING ${range || 'auto-detected range'}...</div>
-                <div style="color: #888; font-size: 0.9rem;">Interface: ${iface} | Full scan: ${fullScan ? 'YES (all ports)' : 'NO (common ports only)'}</div>
+                <div style="color: #888; font-size: 0.9rem;">Interface: ${iface}</div>
                 <div style="margin-top: 1rem; color: #0f0; font-family: monospace;">⚡ Sending ARP requests...</div>
             </div>`;
             
@@ -456,7 +427,7 @@
                 body: JSON.stringify({
                     interface: iface,
                     network_range: range,
-                    full_scan: fullScan
+                    full_scan: false
                 })
             });
 
@@ -664,8 +635,6 @@
         const iface = document.getElementById('sniffer-interface').value;
         const count = parseInt(document.getElementById('sniffer-count').value || '0');
         const timeout = parseInt(document.getElementById('sniffer-timeout').value || '0');
-        const promisc = document.getElementById('sniffer-promisc').checked;
-        const pcap = document.getElementById('sniffer-pcap').checked;
 
         if (snifferPollInterval) {
             clearInterval(snifferPollInterval);
@@ -681,8 +650,8 @@
                     interface: iface,
                     count,
                     timeout,
-                    promisc,
-                    pcap_file: pcap ? `capture_${Date.now()}.pcap` : null
+                    promisc: false,
+                    pcap_file: null
                 })
             });
 
