@@ -42,6 +42,7 @@ class IDSMonitor:
         self.alert_sink = alert_sink
         self.local_ip = get_local_ip(interface)
         self.mac_ip_map: Dict[str, str] = {}
+        self.mac_claimed_ips: Dict[str, set] = defaultdict(set)  # Track all IPs each MAC has claimed
 
         # Whitelist: trusted IPs (gateway, legitimate servers)
         self.whitelist = {
@@ -303,7 +304,7 @@ class IDSMonitor:
                 self.alert_cooldowns[cooldown_key] = ts + 60
 
     def _handle_arp_packet(self, packet, arp_seen):
-        """Detect ARP spoofing by tracking MAC changes for each IP."""
+        """Detect ARP spoofing by tracking which MACs claim multiple IPs (spoofing signature)."""
         if not packet.haslayer(ARP):
             return
         
@@ -316,8 +317,9 @@ class IDSMonitor:
         src_ip = arp_layer.psrc
         src_mac = arp_layer.hwsrc
 
-        # Track mac->ip mapping so we can attribute spoofers by MAC
+        # Track which IPs this MAC has claimed
         if src_ip and src_mac:
+            self.mac_claimed_ips[src_mac].add(src_ip)
             self.mac_ip_map[src_mac] = src_ip
         
         # Skip whitelisted IPs (gateway, trusted servers)
@@ -328,33 +330,73 @@ class IDSMonitor:
         if self.local_ip and src_ip == self.local_ip:
             return
         
+        # Check if this MAC is claiming multiple different IPs (spoofing signature!)
+        claimed = self.mac_claimed_ips.get(src_mac, set())
+        if len(claimed) > 1:
+            # This MAC has claimed at least 2 different IPs - definitely spoofing!
+            ts = time.time()
+            cooldown_key = f"arp_spoof_{src_mac}"
+            cooldown_until = self.alert_cooldowns.get(cooldown_key, 0)
+            if ts >= cooldown_until:
+                # The spoofing MAC is the attacker
+                attacker_ip = None
+                # Find the attacker IP: check if this MAC sent packets as a specific IP in our history
+                for ip_candidate in claimed:
+                    # Prefer non-whitelisted IPs as the attacker
+                    if ip_candidate not in self.whitelist and ip_candidate != self.local_ip:
+                        attacker_ip = ip_candidate
+                        break
+                
+                if not attacker_ip:
+                    attacker_ip = list(claimed)[0]
+                
+                summary = (
+                    f"ARP SPOOFING DETECTED: MAC {src_mac} claiming multiple IPs "
+                    f"({', '.join(sorted(claimed))}), attacker likely {attacker_ip}"
+                )
+                details = {
+                    "attacker_ip": attacker_ip,
+                    "spoofed_mac": src_mac,
+                    "claimed_ips": list(claimed),
+                    "current_claim": src_ip,
+                    "attack_type": "arp_spoof",
+                }
+                self._raise_alert("ARP_SPOOF_DETECTED", summary, "critical", details)
+                self.alert_cooldowns[cooldown_key] = ts + 60
+                self.logger.warning(
+                    f"ARP SPOOF: MAC {src_mac} claimed IPs {claimed} - attacker is {attacker_ip}"
+                )
+                return
+        
         # Learn the baseline: first time seeing this IP, record its MAC
         if src_ip not in self.arp_table:
             self.arp_table[src_ip] = src_mac
             return
         
-        # Check if MAC changed for this IP (ARP spoofing!)
+        # Also detect if a previously-known IP suddenly has a different MAC (standard ARP spoof detection)
         expected_mac = self.arp_table[src_ip]
         if src_mac != expected_mac:
-            # MAC changed! This is ARP spoofing
+            # Check if the new MAC is claiming multiple IPs (our new spoof detector will catch it above)
+            # For this case (MAC change for a known IP), look up what other IPs this new MAC claims
+            new_claimed = self.mac_claimed_ips.get(src_mac, set())
+            if len(new_claimed) > 1:
+                # Already detected above
+                return
+            
+            # Single IP change could be legitimate reconfiguration, log but low confidence
             ts = time.time()
-            cooldown_key = f"arp_spoof_{src_ip}"
+            cooldown_key = f"mac_change_{src_ip}"
             cooldown_until = self.alert_cooldowns.get(cooldown_key, 0)
             if ts >= cooldown_until:
-                attacker_ip = self.mac_ip_map.get(src_mac)
-                summary = (
-                    f"ARP SPOOFING DETECTED: {src_ip} changed MAC from {expected_mac} to {src_mac}"
-                )
+                summary = f"MAC change detected for {src_ip}: {expected_mac} → {src_mac}"
                 details = {
-                    "ip": src_ip,
-                    "attacker_ip": attacker_ip or "unknown",
+                    "target_ip": src_ip,
                     "original_mac": expected_mac,
-                    "spoofed_mac": src_mac,
+                    "new_mac": src_mac,
                     "attack_type": "arp_spoof",
                 }
-                self._raise_alert("ARP_SPOOF_DETECTED", summary, "critical", details)
+                self._raise_alert("ARP_SPOOF_DETECTED", summary, "high", details)
                 self.alert_cooldowns[cooldown_key] = ts + 60
-                self.logger.warning(f"ARP SPOOF: {src_ip} MAC changed {expected_mac} -> {src_mac}")
 
     # ------------------------------------------------------------------
     # Helpers
