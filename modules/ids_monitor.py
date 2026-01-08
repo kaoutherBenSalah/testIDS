@@ -41,6 +41,7 @@ class IDSMonitor:
         self.syn_unique_sources = max(5, syn_unique_sources)
         self.alert_sink = alert_sink
         self.local_ip = get_local_ip(interface)
+        self.mac_ip_map: Dict[str, str] = {}
 
         # Whitelist: trusted IPs (gateway, legitimate servers)
         self.whitelist = {
@@ -314,9 +315,17 @@ class IDSMonitor:
         
         src_ip = arp_layer.psrc
         src_mac = arp_layer.hwsrc
+
+        # Track mac->ip mapping so we can attribute spoofers by MAC
+        if src_ip and src_mac:
+            self.mac_ip_map[src_mac] = src_ip
         
         # Skip whitelisted IPs (gateway, trusted servers)
         if src_ip in self.whitelist:
+            return
+
+        # Skip our own interface IP
+        if self.local_ip and src_ip == self.local_ip:
             return
         
         # Learn the baseline: first time seeing this IP, record its MAC
@@ -332,9 +341,13 @@ class IDSMonitor:
             cooldown_key = f"arp_spoof_{src_ip}"
             cooldown_until = self.alert_cooldowns.get(cooldown_key, 0)
             if ts >= cooldown_until:
-                summary = f"ARP SPOOFING DETECTED: {src_ip} changed MAC from {expected_mac} to {src_mac}"
+                attacker_ip = self.mac_ip_map.get(src_mac)
+                summary = (
+                    f"ARP SPOOFING DETECTED: {src_ip} changed MAC from {expected_mac} to {src_mac}"
+                )
                 details = {
                     "ip": src_ip,
+                    "attacker_ip": attacker_ip or "unknown",
                     "original_mac": expected_mac,
                     "spoofed_mac": src_mac,
                     "attack_type": "arp_spoof",
