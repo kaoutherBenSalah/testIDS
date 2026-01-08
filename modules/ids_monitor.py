@@ -171,11 +171,16 @@ class IDSMonitor:
         try:
             import ipaddress
             network = ipaddress.ip_network(self.network_range, strict=False)
+            # Never accuse the defender itself
+            if self.local_ip:
+                spoofed_sources.discard(self.local_ip)
             
             # Get all local IPs that have been seen in port scan history
             # (port scanners typically probe before launching attacks)
             local_suspects = {ip for ip in self.port_scan_tracker.keys() 
                             if ipaddress.ip_address(ip) in network}
+            if self.local_ip:
+                local_suspects.discard(self.local_ip)
             
             # If we found local IPs that were actively scanning, one of them is likely the attacker
             if local_suspects:
@@ -188,7 +193,7 @@ class IDSMonitor:
             # Look for IPs in the 192.168.111.x range that we've seen
             for src_ip in self.arp_table.keys():
                 try:
-                    if ipaddress.ip_address(src_ip) in network:
+                    if ipaddress.ip_address(src_ip) in network and src_ip != self.local_ip:
                         return src_ip
                 except:
                     pass
@@ -247,7 +252,9 @@ class IDSMonitor:
                 source_counts = {}
                 for _, src in filtered:
                     source_counts[src] = source_counts.get(src, 0) + 1
-                top_source = max(source_counts, key=source_counts.get) if source_counts else "unknown"
+                # Pick the most frequent non-local source; fallback to unknown
+                candidates = [s for s, _ in sorted(source_counts.items(), key=lambda kv: kv[1], reverse=True) if s != self.local_ip]
+                top_source = candidates[0] if candidates else "unknown"
                 
                 summary = (
                     f"SYN FLOOD: {syn_count} SYNs to {dst_ip} in {self.syn_window_sec}s "
