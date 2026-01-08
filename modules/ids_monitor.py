@@ -15,7 +15,7 @@ from typing import Callable, Dict, List, Optional
 from scapy.all import ARP, Ether, IP, TCP, UDP, srp, sniff
 
 from utils.logger import get_logger
-from utils.network_utils import get_default_network_range
+from utils.network_utils import get_default_network_range, get_local_ip
 
 Alert = Dict[str, object]
 
@@ -40,6 +40,7 @@ class IDSMonitor:
         self.syn_window_sec = max(3, syn_window_sec)
         self.syn_unique_sources = max(5, syn_unique_sources)
         self.alert_sink = alert_sink
+        self.local_ip = get_local_ip(interface)
 
         # Whitelist: trusted IPs (gateway, legitimate servers)
         self.whitelist = {
@@ -212,8 +213,13 @@ class IDSMonitor:
         if src_ip in self.whitelist:
             return
 
+        # Do not count our own responses (SYN-ACKs) as attack traffic
+        if self.local_ip and src_ip == self.local_ip:
+            return
+
         # 1. SYN flood detection
-        if tcp_layer.flags & 0x02:  # SYN flag
+        # Only count pure SYN (not SYN-ACK) to avoid misattributing defender responses
+        if (tcp_layer.flags & 0x02) and not (tcp_layer.flags & 0x10):
             history = self.syn_history[dst_ip]
             history.append((ts, src_ip))
             window_start = ts - self.syn_window_sec
